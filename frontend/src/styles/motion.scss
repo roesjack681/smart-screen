@@ -1,0 +1,38 @@
+/**
+ * 系统内动效：克制、不眩晕
+ */
+:root {
+  --tm-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --tm-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --tm-duration-fast: 0.16s;
+  --tm-duration: 0.28s;
+  --tm-duration-slow: 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 路由切换：进出并行，仅轻淡入，避免 out-in 造成空白卡顿 */
+.page-fade-enter-active {
+  transition: opacity var(--tm-duration-fast) var(--tm-ease-out);
+}
+
+.page-fade-leave-active {
+  transition: opacity var(--tm-duration-fast) var(--tm-ease-in-out);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  pointer-events: none;
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}

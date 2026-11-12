@@ -1,0 +1,76 @@
+.ant-card,
+.ant-btn,
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-input-number-input,
+.ant-select-selector,
+.ant-picker,
+.ant-tag,
+.ant-badge-count,
+.ant-modal-content,
+.ant-table,
+.ant-list-item,
+.ant-tabs-tab,
+.ant-form-item-control-input-content > .ant-input {
+  border-radius: var(--tm-radius) !important;
+}
+
+.ant-card {
+  border: 1px solid var(--tm-border) !important;
+  box-shadow: none !important;
+}
+
+.ant-btn-circle,
+.ant-btn-round {
+  border-radius: calc(var(--tm-radius) * 2) !important;
+}
+
+.ant-avatar-circle {
+  border-radius: 50% !important;
+}
+
+.ant-layout-sider {
+  background: var(--tm-sider-bg) !important;
+}
+
+.ant-menu-dark {
+  background: transparent !important;
+}
+
+.ant-menu-dark .ant-menu-item-selected {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 2px 0 0 #fff;
+  transition: background-color 0.2s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.ant-menu-dark .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.ant-btn-primary {
+  box-shadow: none !important;
+  transition:
+    background var(--tm-duration-fast, 0.18s) var(--tm-ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform var(--tm-duration-fast, 0.18s) var(--tm-ease-out, cubic-bezier(0.22, 1, 0.36, 1)) !important;
+}
+
+.ant-btn-primary:not(:disabled):hover {
+  background: #2a2a2a !important;
+}
+
+.ant-btn-primary:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.ant-table-thead > tr > th {
+  background: #fafafa !important;
+  color: var(--tm-text-secondary) !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.02em;
+}
+
+.ant-modal-content {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12) !important;
+}

@@ -1,0 +1,4 @@
+html { min-width: 360px; background: #071423; color-scheme: dark; }
+body { margin: 0; }
+body, button, input, select, textarea { font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+#app { min-height: 100vh; }

@@ -1,0 +1,99 @@
+@use '../mixins/responsive.scss' as *;
+
+/* 桌面端工具栏：对齐原先 a-space 横向排布 */
+.page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@include respond-below(lg) {
+  .app-layout .app-sider {
+    display: none !important;
+  }
+
+  .app-layout .header-wrap {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .app-layout .page-subtitle {
+    display: none;
+  }
+
+  .app-layout .brand-tag {
+    display: none;
+  }
+
+  .app-layout .app-content {
+    padding: 12px 12px 20px;
+  }
+
+  .page-toolbar {
+    gap: 8px;
+    margin-bottom: 12px;
+
+    .ant-input,
+    .ant-input-affix-wrapper,
+    .ant-select {
+      flex: 1 1 140px;
+      min-width: 0;
+      width: auto !important;
+    }
+
+    .ant-btn {
+      flex: 0 0 auto;
+    }
+  }
+
+  .mobile-record-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ant-modal {
+    max-width: calc(100vw - 24px) !important;
+    margin: 12px auto !important;
+    padding-bottom: 0;
+  }
+
+  .ant-modal-body {
+    padding: 16px !important;
+  }
+}
+
+.app-mobile-drawer {
+  .ant-drawer-body {
+    padding: 0;
+    background: var(--tm-sider-bg);
+  }
+}
+
+.app-mobile-drawer__logo {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.app-mobile-drawer__logo-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.app-mobile-drawer__logo-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.app-mobile-drawer__menu {
+  border-inline-end: none !important;
+  background: transparent !important;
+}

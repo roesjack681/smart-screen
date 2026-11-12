@@ -1,0 +1,35 @@
+# 若整仓提交 smart-screen（前后端一起）
+
+# Dependencies & builds
+**/node_modules/
+**/dist/
+**/build/
+**/.next/
+**/coverage/
+**/*.tsbuildinfo
+
+# Env & secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Logs & caches
+**/logs/
+**/*.log
+**/.vite/
+**/.cache/
+**/.turbo/
+
+# Editor / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+Desktop.ini
+*~
+
+# Misc
+*.pem
+*.key
+.vercel/

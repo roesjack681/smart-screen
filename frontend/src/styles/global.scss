@@ -1,0 +1,33 @@
+@use './variables.scss';
+@use './motion.scss';
+@use './layout/app-shell.scss';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--tm-font-body);
+  color: var(--tm-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: var(--tm-bg);
+}
+
+h1,
+h2,
+h3,
+.tm-display {
+  font-family: var(--tm-font-display);
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}

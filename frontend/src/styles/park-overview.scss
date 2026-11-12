@@ -1,0 +1,304 @@
+.park-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.park-overview__metrics {
+  margin-bottom: 0;
+}
+
+.park-metric-clickable {
+  cursor: pointer;
+}
+
+.park-metric-clickable:hover {
+  border-color: #2f6d86;
+}
+
+.park-metric-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px !important;
+  white-space: normal !important;
+}
+
+.park-overview__scenario {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #1c394c;
+  border-radius: 5px;
+  background: linear-gradient(105deg, #102a3eaa, #0c2133);
+}
+
+.park-overview__scenario-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #6f92a7;
+  margin-right: 10px;
+}
+
+.park-overview__scenario strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: #cfe6f1;
+}
+
+.park-overview__scenario-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.park-overview__main {
+  display: grid;
+  grid-template-columns: minmax(240px, 24%) minmax(0, 48%) minmax(260px, 28%);
+  gap: 14px;
+  align-items: stretch;
+  min-height: 520px;
+}
+
+.park-overview__left,
+.park-overview__right,
+.park-overview__center {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.park-overview__map {
+  flex: 1;
+  min-height: 440px;
+  padding: 0 10px 10px;
+}
+
+.park-overview__subhead {
+  border-top: 1px solid #1b3445;
+  margin-top: 4px;
+}
+
+.park-op-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.park-op-stats > div {
+  background: #0c2233;
+  border: 1px solid #243f52;
+  border-radius: 4px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.park-op-stats small {
+  display: block;
+  font-size: 10px;
+  color: #6f91a6;
+  margin-bottom: 4px;
+}
+
+.park-op-stats b {
+  font: 18px/1 'Bahnschrift', 'Consolas', monospace;
+  color: #d8eef8;
+  font-weight: 500;
+}
+
+.park-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+}
+
+.park-feed > li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #1c3445;
+}
+
+.park-feed > li:last-child {
+  border-bottom: 0;
+}
+
+.park-feed strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #bfd6e4;
+}
+
+.park-feed p,
+.park-feed span[data-state],
+.park-feed time {
+  font-size: 10px;
+  color: #6f91a6;
+  margin-top: 3px;
+}
+
+.park-feed span[data-state='ongoing'] {
+  color: #f59a38;
+}
+
+.park-feed span[data-state='pending'] {
+  color: #438dfa;
+}
+
+.park-feed span[data-state='completed'] {
+  color: #4ed9b3;
+}
+
+.park-feed__click {
+  cursor: pointer;
+}
+
+.park-feed__click:hover strong {
+  color: #72deeb;
+}
+
+.park-feed__tag {
+  font-size: 10px !important;
+  color: #f59a38 !important;
+  white-space: nowrap;
+}
+
+.park-feed__empty,
+.park-vehicle-empty {
+  justify-content: center;
+  color: #56788f;
+  font-size: 11px;
+  padding: 16px 0 !important;
+  border: 0 !important;
+}
+
+.park-alcohol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.park-alcohol > div {
+  background: #0c2233;
+  border: 1px solid #243f52;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.park-alcohol__wide {
+  grid-column: 1 / -1;
+}
+
+.park-alcohol small {
+  display: block;
+  font-size: 10px;
+  color: #6f91a6;
+  margin-bottom: 6px;
+}
+
+.park-alcohol b {
+  display: block;
+  font: 22px/1.1 'Bahnschrift', 'Consolas', monospace;
+  color: #e3f4fb;
+  font-weight: 500;
+}
+
+.park-alcohol span {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  color: #6f91a6;
+}
+
+.park-overview__bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.park-bottom-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.park-bottom-list > li {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid #1c3445;
+}
+
+.park-bottom-list > li:last-child {
+  border-bottom: 0;
+}
+
+.park-bottom-list time {
+  font: 11px 'Consolas', monospace;
+  color: #6a8da3;
+  padding-top: 2px;
+}
+
+.park-bottom-list strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #c5dce8;
+}
+
+.park-bottom-list span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 10px;
+  color: #6f91a6;
+}
+
+.park-bottom-list i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+@media (max-width: 1250px) {
+  .park-overview__main {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .park-overview__map {
+    min-height: 380px;
+  }
+
+  .park-overview__bottom {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .park-overview__scenario {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .park-op-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

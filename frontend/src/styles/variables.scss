@@ -1,0 +1,26 @@
+// Ant Design Vue Grid 断点（与 a-col :lg 等一致）
+$bp-sm: 576px;
+$bp-md: 768px;
+$bp-lg: 992px;
+$bp-xl: 1200px;
+
+:root {
+  --tm-primary: #1a1a1a;
+  --tm-primary-glow: rgba(26, 26, 26, 0.12);
+  --tm-accent: #0f766e;
+  --tm-accent-glow: rgba(15, 118, 110, 0.14);
+  --tm-success: #15803d;
+  --tm-danger: #b91c1c;
+  --tm-bg: #f4f4f5;
+  --tm-bg-gradient: #f4f4f5;
+  --tm-sider-bg: #111113;
+  --tm-card-shadow: none;
+  --tm-card-hover-shadow: none;
+  --tm-glass: #ffffff;
+  --tm-border: #e4e4e7;
+  --tm-radius: 8px;
+  --tm-text: #18181b;
+  --tm-text-secondary: #71717a;
+  --tm-font-display: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --tm-font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+}
