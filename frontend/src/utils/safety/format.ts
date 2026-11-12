@@ -1,4 +1,4 @@
-import type { DeviceStatus, OrderPriority, OrderStatus, SafetyDevice } from '@/types/safety';
+import type { DeviceStatus, SafetyDevice } from '@/types/safety';
 
 export function formatTime(timestamp: number, seconds = true): string {
   return new Intl.DateTimeFormat('zh-CN', {
@@ -30,17 +30,4 @@ export const statusNames: Record<DeviceStatus, string> = {
   warning: '预警',
   critical: '报警',
   offline: '离线',
-  maintenance: '维护中',
-};
-
-export const orderStatusNames: Record<OrderStatus, string> = {
-  pending: '待执行',
-  inprogress: '维修中',
-  completed: '已完成',
-};
-
-export const priorityNames: Record<OrderPriority, string> = {
-  low: '常规',
-  medium: '优先',
-  high: '紧急',
 };

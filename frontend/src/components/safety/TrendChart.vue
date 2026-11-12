@@ -1,24 +1,29 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { formatTime } from '@/utils/safety/format'
 const props = defineProps({ device: Object, frozen: { type: Boolean, default: false }, showThresholds: { type: Boolean, default: true }, minutes: { type: Number, default: 6 }, compact: Boolean })
 const hovered = ref(null)
 const svg = ref(null)
-let frozenHistory = null
+const frozenHistory = ref(null)
+watch(() => props.frozen, value => { if (value) frozenHistory.value = props.device.history.map(point => ({ ...point })) })
 const samples = computed(() => {
-  if (props.frozen && frozenHistory) return frozenHistory
-  const history = props.device.history
+  const history = props.frozen && frozenHistory.value ? frozenHistory.value : props.device.history
   const latest = history.at(-1)?.t || Date.now()
   const selected = history.filter(point => point.t >= latest - props.minutes * 60000)
-  frozenHistory = selected.map(point => ({ ...point }))
   return selected
 })
-const width = 900, height = 260
+const width = 900, height = ref(170)
+let resizeObserver
+onMounted(() => {
+  resizeObserver = new ResizeObserver(() => { height.value = Math.max(100, Math.round(svg.value.clientHeight)) })
+  resizeObserver.observe(svg.value)
+})
+onBeforeUnmount(() => resizeObserver?.disconnect())
 const pad = { top: 22, right: 22, bottom: 32, left: 52 }
 const bounds = computed(() => {
   const values = samples.value.map(s => s.value)
   let low = Math.min(...values), high = Math.max(...values)
-  if (props.showThresholds) { low = Math.min(low, props.device.rules.low); high = Math.max(high, props.device.rules.high) }
+  if (props.showThresholds) { low = Math.min(low, props.device.stack ? props.device.rules.high : props.device.supportsLow ? props.device.rules.low : 0); high = Math.max(high, props.device.rules.criticalHigh) }
   const span = Math.max(high - low, props.device.unit === 'MPa' ? 0.04 : 8)
   return { low: low - span * 0.14, high: high + span * 0.18 }
 })
@@ -26,9 +31,9 @@ const x = t => {
   const first = samples.value[0]?.t || 0, last = samples.value.at(-1)?.t || first + 1
   return pad.left + ((t - first) / Math.max(last - first, 1)) * (width - pad.left - pad.right)
 }
-const y = value => height - pad.bottom - ((value - bounds.value.low) / (bounds.value.high - bounds.value.low)) * (height - pad.top - pad.bottom)
+const y = value => height.value - pad.bottom - ((value - bounds.value.low) / (bounds.value.high - bounds.value.low)) * (height.value - pad.top - pad.bottom)
 const path = computed(() => samples.value.map((s, i) => `${i ? 'L' : 'M'} ${x(s.t).toFixed(2)} ${y(s.value).toFixed(2)}`).join(' '))
-const fill = computed(() => samples.value.length ? `${path.value} L ${x(samples.value.at(-1).t)} ${height - pad.bottom} L ${pad.left} ${height - pad.bottom} Z` : '')
+const fill = computed(() => samples.value.length ? `${path.value} L ${x(samples.value.at(-1).t)} ${height.value - pad.bottom} L ${pad.left} ${height.value - pad.bottom} Z` : '')
 const ticks = computed(() => Array.from({ length: 5 }, (_, i) => bounds.value.low + (bounds.value.high - bounds.value.low) * i / 4))
 const times = computed(() => samples.value.length ? Array.from({ length: 6 }, (_, i) => samples.value[Math.round((samples.value.length - 1) * i / 5)]) : [])
 const suffix = computed(() => props.device.id.replace(/[^a-z0-9]/gi, '') + (props.compact ? 'mini' : 'full'))
@@ -57,9 +62,11 @@ function hover(event) {
         <rect v-if="showThresholds && !compact" :x="pad.left" :y="y(device.rules.high)" :width="width-pad.left-pad.right" :height="Math.max(0, y(device.rules.low)-y(device.rules.high))" fill="#1da6b0" opacity=".035"/>
         <path :d="fill" :fill="`url(#area-${suffix})`"/>
         <g v-if="showThresholds && !compact" class="ps-limit-line">
-          <line :x1="pad.left" :x2="width-pad.right" :y1="y(device.rules.high)" :y2="y(device.rules.high)"/><line :x1="pad.left" :x2="width-pad.right" :y1="y(device.rules.low)" :y2="y(device.rules.low)"/>
-          <text :x="width-pad.right-4" :y="y(device.rules.high)-7" text-anchor="end">高限 {{ device.rules.high }}{{ device.unit }}</text>
-          <text :x="width-pad.right-4" :y="y(device.rules.low)+15" text-anchor="end">低限 {{ device.rules.low }}{{ device.unit }}</text>
+          <line :x1="pad.left" :x2="width-pad.right" :y1="y(device.rules.high)" :y2="y(device.rules.high)"/><line v-if="device.supportsLow" :x1="pad.left" :x2="width-pad.right" :y1="y(device.rules.low)" :y2="y(device.rules.low)"/>
+          <line :x1="pad.left" :x2="width-pad.right" :y1="y(device.rules.criticalHigh)" :y2="y(device.rules.criticalHigh)" style="stroke:#ed7080"/>
+          <text :x="pad.left+4" :y="Math.max(pad.top+11,y(device.rules.criticalHigh)-7)" text-anchor="start" :style="{fill:device.stack?'#e7b845':'#ed7080'}">{{device.stack?'每日温检':'高高限'}} {{ device.rules.criticalHigh }}{{ device.unit }}</text>
+          <text :x="width-pad.right-4" :y="Math.max(pad.top+11,y(device.rules.high)-7)" text-anchor="end">{{device.stack?'加密温检':'高限'}} {{ device.rules.high }}{{ device.unit }}</text>
+          <text v-if="device.supportsLow" :x="width-pad.right-4" :y="Math.min(height-pad.bottom-3,y(device.rules.low)+15)" text-anchor="end">低限 {{ device.rules.low }}{{ device.unit }}</text>
         </g>
         <path :d="path" fill="none" :stroke="`url(#line-${suffix})`" :stroke-width="compact ? 3 : 2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
         <circle v-if="samples.length" :cx="x(samples.at(-1).t)" :cy="y(samples.at(-1).value)" r="compact ? 0 : 4" fill="#7dfff0" stroke="#102b40" stroke-width="2"/>

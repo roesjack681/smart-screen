@@ -3,6 +3,9 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import PsIcon from '@/components/safety/PsIcon.vue';
 import OverviewView from '@/views/OverviewView.vue';
+import SafetyPanel from '@/components/safety/SafetyPanel.vue';
+import SafetyControls from '@/components/safety/SafetyControls.vue';
+import { useSafetyBridge } from '@/composables/useSafetyBridge';
 import { useParkStore } from '@/stores/park';
 
 type PageKey = 'overview' | 'operations' | 'production' | 'risk';
@@ -17,10 +20,11 @@ interface PageItem {
 }
 
 const park = useParkStore();
+const safety = useSafetyBridge();
 const route = useRoute();
 const router = useRouter();
 
-/** 顶栏四项：总览 / 危险作业监控 / 生产安全预警 / 动态风险评估；仅总览为本团队真实页面 */
+/** 保留总览和其他模块，仅接入生产安全预警。 */
 const pages: PageItem[] = [
   {
     key: 'overview',
@@ -62,7 +66,6 @@ const view = computed<PageKey>(() => {
   const alias: Record<string, PageKey> = {
     monitor: 'operations',
     warning: 'production',
-    maintenance: 'overview',
   };
   const mapped = alias[key] || key;
   return pages.some((p) => p.key === mapped) ? mapped : 'overview';
@@ -126,7 +129,7 @@ onBeforeUnmount(() => {
             <b>生产安全感知平台</b>
             <span class="ps-operating-status" :data-alert="park.pendingAlarms.length ? '1' : '0'">
               <i />
-              {{ park.pendingAlarms.length ? '预警跟踪中' : '全域运行平稳' }}
+              {{ (view === 'production' ? safety.activeAlarms.value.length : park.pendingAlarms.length) ? '预警跟踪中' : '全域运行平稳' }}
             </span>
           </div>
           <span>SAFETY OPERATIONS CENTER</span>
@@ -144,13 +147,14 @@ onBeforeUnmount(() => {
         >
           <PsIcon :name="item.icon" :size="16" />
           <span>{{ item.label }}</span>
-          <i v-if="item.key === 'production' && park.pendingAlarms.length" class="ps-nav-count">
-            {{ park.pendingAlarms.length }}
+          <i v-if="item.key === 'production' && safety.pendingAlarms.value.length" class="ps-nav-count">
+            {{ safety.pendingAlarms.value.length }}
           </i>
         </button>
       </nav>
 
       <div class="ps-header-right">
+        <SafetyControls />
         <span class="ps-demo-label">演示</span>
         <span class="ps-header-clock">
           {{ formatClock(park.demoTime) }}
@@ -169,7 +173,8 @@ onBeforeUnmount(() => {
 
     <main class="ps-main">
       <div class="ps-main-body">
-        <OverviewView v-if="page.owned" @navigate="go" />
+        <OverviewView v-if="view === 'overview'" @navigate="go" />
+        <SafetyPanel v-else-if="view === 'production'" :store="safety" />
         <section v-else class="ps-panel ps-placeholder" aria-hidden="true" />
       </div>
 

@@ -13,9 +13,9 @@ export const DEFAULT_MENU_ROUTES: RouteMenuItem[] = [
   {
     id: 2,
     parentId: null,
-    name: '设备维护',
-    path: '/maintenance',
-    icon: 'ToolOutlined',
+    name: '生产安全预警',
+    path: '/dashboard?view=production',
+    icon: 'AlertOutlined',
     permission: null,
   },
 ];

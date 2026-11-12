@@ -11,6 +11,7 @@ export default tseslint.config(
   {
     files: ['**/*.{ts,vue}'],
     languageOptions: {
+      parserOptions: { parser: tseslint.parser },
       globals: {
         ...globals.browser,
         ...globals.node,

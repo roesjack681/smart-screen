@@ -1,24 +1,22 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { makeDevices, makeHistory, makeOrders, makePastAlarms, normalValue } from '@/data/safety/mock';
+import { makeDevices, makeEvents, makeHistory, makePastAlarms, normalValue } from '@/data/safety/mock';
 import type {
-  CreateOrderInput,
   DeviceStatus,
-  MaintenanceOrder,
   SafetyAlarm,
   SafetyDevice,
   SafetyRules,
   ScenarioKind,
 } from '@/types/safety';
-import { AlarmEngine, evaluateDevice, validateRules } from '@/utils/safety/rules';
+import { AlarmEngine, validateRules } from '@/utils/safety/rules';
 
-const STORAGE_KEY = 'm5-safety-demo-v1';
+const STORAGE_KEY = 'm5-safety-demo-v2';
 
 export const useSafetyStore = defineStore('safety', () => {
   const nowFn = () => Date.now();
   const startTime = nowFn();
   const devices = ref<SafetyDevice[]>(makeDevices(startTime));
-  const orders = ref<MaintenanceOrder[]>([]);
+  const events = ref(makeEvents(startTime));
   const alarms = ref<SafetyAlarm[]>([]);
   const time = ref(startTime);
   const running = ref(false);
@@ -28,7 +26,7 @@ export const useSafetyStore = defineStore('safety', () => {
   const selectedDeviceId = ref(devices.value[0]?.id ?? '');
   const monitoringSince = ref(startTime);
 
-  let saved: { rules?: Record<string, SafetyRules>; orders?: MaintenanceOrder[] } | null = null;
+  let saved: { rules?: Record<string, SafetyRules> } | null = null;
   try {
     saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   } catch {
@@ -38,24 +36,7 @@ export const useSafetyStore = defineStore('safety', () => {
   if (saved?.rules) {
     for (const device of devices.value) {
       const rules = saved.rules[device.id];
-      if (rules && !validateRules(rules)) device.rules = { ...rules };
-    }
-  }
-
-  const validOrders =
-    Array.isArray(saved?.orders) &&
-    saved!.orders!.every(
-      (o) =>
-        o?.id &&
-        devices.value.some((d) => d.id === o.deviceId) &&
-        ['pending', 'inprogress', 'completed'].includes(o.status),
-    );
-  orders.value = validOrders ? saved!.orders! : makeOrders(startTime);
-
-  for (const order of orders.value) {
-    if (order.status === 'inprogress') {
-      const device = devices.value.find((d) => d.id === order.deviceId);
-      if (device) device.maintenance = true;
+      if (device.domain!=='warehouse' && rules && !validateRules(rules)) device.rules = { ...rules };
     }
   }
 
@@ -67,7 +48,6 @@ export const useSafetyStore = defineStore('safety', () => {
   let audioContext: AudioContext | null = null;
   let autoAt = startTime + 30000;
   let autoIndex = 0;
-  let disposed = false;
 
   function syncAlarms(): void {
     alarms.value = engine.snapshot();
@@ -79,7 +59,6 @@ export const useSafetyStore = defineStore('safety', () => {
         STORAGE_KEY,
         JSON.stringify({
           rules: Object.fromEntries(devices.value.map((d) => [d.id, d.rules])),
-          orders: orders.value,
         }),
       );
     } catch {
@@ -144,8 +123,13 @@ export const useSafetyStore = defineStore('safety', () => {
       const result = engine.update(device, nowValue);
       device.online = result.online;
       device.slope = result.slope;
-      if (result.events.some((e) => e.kind === 'created' || e.kind === 'escalated')) shouldSound = true;
+      if (result.events.some((e) => e.kind !== 'resolved')) shouldSound = true;
     }
+    const relatedEvents = [
+      ...engine.updateConcurrent(devices.value, nowValue),
+      ...events.value.flatMap(event => engine.updateEvent(event, nowValue)),
+    ];
+    if (relatedEvents.some(event => event.kind !== 'resolved')) shouldSound = true;
     syncAlarms();
     if (shouldSound) playSound();
   }
@@ -153,12 +137,26 @@ export const useSafetyStore = defineStore('safety', () => {
   function injectScenario(kind: ScenarioKind, deviceId = selectedDeviceId.value, silent = false): void {
     const device = devices.value.find((d) => d.id === deviceId);
     if (!device) return;
-    if (device.maintenance && kind !== 'normal') {
-      notify('该设备处于维护模式，新告警已抑制；请先完成维护或选择其他设备');
+    if ((kind === 'low' && !device.supportsLow) || ((kind === 'rapidUp' || kind === 'rapidDown') && !device.supportsRate)) {
+      notify('该监测对象未启用低限或变化速率场景，请选择适用的模拟异常');
+      return;
+    }
+    if (kind !== 'normal' && device.scenario?.kind === kind) {
+      if (!silent) notify(`${device.name}正在演示该异常，继续跟踪当前告警`);
       return;
     }
     const t = nowFn();
-    const offset = device.unit === 'MPa' ? 0.02 : device.unit === 'mm/s' ? 0.3 : 2;
+    const offset = device.domain==='warehouse'?0.4:device.unit === 'MPa' ? 0.02 : 2;
+    // 切换演示异常时结束该设备上一轮；同一异常重复注入保持确认和延后状态。
+    if (kind !== 'normal') {
+      const healthyValue = device.baseline;
+      device.scenario = null;
+      device.value = healthyValue;
+      device.lastSeen = t;
+      device.online = true;
+      device.history = makeHistory(device, t).map((sample) => ({ t: sample.t, value: healthyValue }));
+      engine.resetDemoDevice(device.id, t);
+    }
     if (kind === 'normal') {
       device.scenario = null;
       device.history = makeHistory(device, t, (t - startTime) / 1000);
@@ -186,9 +184,29 @@ export const useSafetyStore = defineStore('safety', () => {
       notify(
         kind === 'normal'
           ? `${device.name}已恢复正常工况`
-          : `${device.name}已切换演示工况，监测服务将按规则自动判定`,
+          : `${device.name}已切换异常场景，满足持续时间后将再次提醒`,
       );
     }
+  }
+
+  function injectEvent(eventId: string, active = true): void {
+    const event = events.value.find(item => item.id === eventId);
+    if (!event) return;
+    if (event.active === active) {
+      notify(active ? '该泄漏信号已触发，继续跟踪当前事件' : '该泄漏信号已处于正常状态');
+      return;
+    }
+    event.active = active;
+    event.changedAt = nowFn();
+    process(event.changedAt);
+    notify(active ? `${event.name}模拟信号已触发，请核查处置建议` : '泄漏信号已恢复，红色事件仍需人工复核');
+  }
+
+  function injectConcurrent(): void {
+    injectScenario('high', 'EXT-02', true);
+    injectScenario('high', 'EXT-P1', true);
+    selectDevice('EXT-02');
+    notify('2号萃取罐温度、压力已同时超限，满足持续时间后触发红色并发告警');
   }
 
   function tick(): void {
@@ -211,14 +229,14 @@ export const useSafetyStore = defineStore('safety', () => {
     if (autoDemo.value && t >= autoAt) {
       restoreAll(true);
       const kinds: ScenarioKind[] = ['high', 'critical', 'rapidUp', 'offline'];
-      const candidate = devices.value.find((d) => !d.maintenance && d.unit === '℃');
+      const candidate = devices.value.find((d) => d.unit === '℃');
       if (candidate) injectScenario(kinds[autoIndex++ % kinds.length], candidate.id, true);
       autoAt = t + 30000;
     }
   }
 
   function startMock(): void {
-    if (timer || disposed) return;
+    if (timer) return;
     running.value = true;
     timer = setInterval(tick, 1000);
   }
@@ -230,8 +248,41 @@ export const useSafetyStore = defineStore('safety', () => {
   }
 
   function restoreAll(silent = false): void {
-    for (const device of devices.value) injectScenario('normal', device.id, true);
-    if (!silent) notify('所有设备已恢复正常工况，恢复记录已更新');
+    const t = nowFn();
+    // 统一恢复后再判定，避免逐个刷新时把其他测点的旧采样记为离线。
+    for (const device of devices.value) {
+      device.scenario = null;
+      device.history = makeHistory(device, t, (t - startTime) / 1000);
+      device.value = device.history.at(-1)!.value;
+      device.lastSeen = t;
+      device.online = true;
+    }
+    for (const event of events.value) { event.active = false; event.changedAt = t; }
+    process(t);
+    if (!silent) notify('全部模拟信号已恢复；红色事件请在详情中完成现场复核');
+  }
+
+  function selectDevice(deviceId: string): void {
+    if (devices.value.some((device) => device.id === deviceId)) selectedDeviceId.value = deviceId;
+  }
+
+  function recordInspection(deviceId:string):void {
+    const device=devices.value.find(d=>d.id===deviceId);
+    if(!device?.stack)return;
+    device.stack.checkedAt=nowFn();
+    notify('已记录本次模拟温检，异常提醒仍需按处置流程跟进');
+  }
+  function setStackException(deviceId:string, enabled:boolean):void {
+    const device=devices.value.find(d=>d.id===deviceId);
+    if(!device?.stack)return;
+    device.stack.ambientException=enabled;
+    process(nowFn());
+    notify('已更新模拟环境例外条件；仍需每日温检并核实现场情况');
+  }
+
+  function setAutoDemo(enabled: boolean): void {
+    autoDemo.value = enabled;
+    autoAt = nowFn() + 30000;
   }
 
   function acknowledge(id: string): void {
@@ -246,11 +297,18 @@ export const useSafetyStore = defineStore('safety', () => {
     notify('弹窗已收起，未恢复且未确认的告警将在 60 秒后再次提醒');
   }
 
+  function review(id: string, reviewer: string, note: string): string {
+    const error = engine.review(id, reviewer, note, nowFn());
+    if (!error) { syncAlarms(); notify('已记录现场复核结果，当前红色事件已解除'); }
+    return error;
+  }
+
   function updateRules(deviceId: string, values: SafetyRules): string {
     const error = validateRules(values);
     if (error) return error;
     const device = devices.value.find((d) => d.id === deviceId);
     if (!device) return '设备不存在';
+    if(device.domain==='warehouse')return '仓储32/35℃依据资料固定，工艺阈值可另行配置';
     device.rules = { ...values };
     persist();
     process(nowFn());
@@ -258,78 +316,8 @@ export const useSafetyStore = defineStore('safety', () => {
     return '';
   }
 
-  function createOrder(input: CreateOrderInput): { error?: string; order?: MaintenanceOrder } {
-    const device = devices.value.find((d) => d.id === input.deviceId);
-    if (!device) return { error: '请选择设备' };
-    if (!input.title?.trim() || !input.owner?.trim()) return { error: '请填写工单标题和负责人' };
-    if (!Number.isFinite(input.plannedAt)) return { error: '请选择计划日期' };
-    if (input.alarmId) {
-      const duplicate = orders.value.find((o) => o.alarmId === input.alarmId && o.status !== 'completed');
-      if (duplicate) {
-        notify('该告警已关联维护工单');
-        return { order: duplicate };
-      }
-    }
-    const order: MaintenanceOrder = {
-      ...input,
-      id: `WO-${nowFn()}-${orders.value.length + 1}`,
-      title: input.title.trim(),
-      owner: input.owner.trim(),
-      status: 'pending',
-      createdAt: nowFn(),
-    };
-    orders.value.unshift(order);
-    persist();
-    notify('维护工单已创建');
-    return { order };
-  }
-
-  function startOrder(id: string): string {
-    const order = orders.value.find((o) => o.id === id);
-    if (!order || order.status !== 'pending') return '工单状态不允许开始';
-    if (orders.value.some((o) => o.deviceId === order.deviceId && o.status === 'inprogress')) {
-      return '该设备已有维修中的工单';
-    }
-    const device = devices.value.find((d) => d.id === order.deviceId);
-    if (!device) return '设备不存在';
-    order.status = 'inprogress';
-    order.startedAt = nowFn();
-    device.maintenance = true;
-    persist();
-    notify('已进入维护模式，新告警暂停产生，现有告警继续跟踪');
-    return '';
-  }
-
-  function completeOrder(id: string, result: string, checks: boolean[]): string {
-    const order = orders.value.find((o) => o.id === id);
-    if (!order || order.status !== 'inprogress') return '请先开始维护';
-    if (!result?.trim()) return '请填写维修与验收结果';
-    if (!Array.isArray(checks) || checks.length !== 3 || !checks.every(Boolean)) {
-      return '请完成全部三项验收确认';
-    }
-    const device = devices.value.find((d) => d.id === order.deviceId);
-    if (!device) return '设备不存在';
-    const current = evaluateDevice(device, nowFn());
-    if (
-      !current.online ||
-      current.signals.some((signal) => signal.severity) ||
-      alarms.value.some((a) => a.deviceId === device.id && !a.resolvedAt)
-    ) {
-      return '设备仍离线、读数异常或有未恢复告警，请先恢复工况后验收';
-    }
-    order.status = 'completed';
-    order.result = result.trim();
-    order.completedAt = nowFn();
-    order.acceptance = [...checks];
-    device.maintenance = false;
-    device.lastService = nowFn();
-    device.nextService = nowFn() + 30 * 86400000;
-    persist();
-    notify('维护已验收，设备恢复监测');
-    return '';
-  }
-
   const activeAlarms = computed(() => alarms.value.filter((a) => !a.resolvedAt));
+  const reviewAlarms = computed(() => activeAlarms.value.filter(a => a.severity === 'critical' && a.clearedAt));
   const pendingAlarms = computed(() =>
     activeAlarms.value
       .filter((a) => !a.acknowledgedAt && a.snoozedUntil <= time.value)
@@ -351,7 +339,6 @@ export const useSafetyStore = defineStore('safety', () => {
   );
 
   function deviceStatus(device: SafetyDevice): DeviceStatus {
-    if (device.maintenance) return 'maintenance';
     if (activeAlarms.value.some((a) => a.deviceId === device.id && a.severity === 'critical')) return 'critical';
     if (!device.online) return 'offline';
     if (activeAlarms.value.some((a) => a.deviceId === device.id)) return 'warning';
@@ -360,14 +347,15 @@ export const useSafetyStore = defineStore('safety', () => {
 
   function dispose(): void {
     stopMock();
-    disposed = true;
     if (toastTimer) clearTimeout(toastTimer);
     void audioContext?.close();
+    audioContext = null;
+    soundEnabled.value = false;
   }
 
   return {
     devices,
-    orders,
+    events,
     alarms,
     time,
     running,
@@ -377,6 +365,7 @@ export const useSafetyStore = defineStore('safety', () => {
     selectedDeviceId,
     monitoringSince,
     activeAlarms,
+    reviewAlarms,
     pendingAlarms,
     selectedDevice,
     highestSeverity,
@@ -386,13 +375,17 @@ export const useSafetyStore = defineStore('safety', () => {
     process,
     ingestSample,
     injectScenario,
+    injectEvent,
+    injectConcurrent,
     restoreAll,
+    selectDevice,
+    recordInspection,
+    setStackException,
+    setAutoDemo,
     acknowledge,
     snooze,
+    review,
     updateRules,
-    createOrder,
-    startOrder,
-    completeOrder,
     toggleSound,
     notify,
     dispose,

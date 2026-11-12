@@ -1,7 +1,6 @@
 export type AlarmSeverity = 'warning' | 'critical';
-export type DeviceStatus = 'normal' | 'warning' | 'critical' | 'offline' | 'maintenance';
-export type OrderStatus = 'pending' | 'inprogress' | 'completed';
-export type OrderPriority = 'low' | 'medium' | 'high';
+export type DeviceStatus = 'normal' | 'warning' | 'critical' | 'offline';
+export type SafetyDomain = 'process' | 'storage' | 'gas' | 'leak' | 'warehouse';
 export type ScenarioKind =
   | 'normal'
   | 'high'
@@ -43,18 +42,36 @@ export interface SafetyDevice {
   unit: string;
   baseline: number;
   phase: number;
-  health: number;
   rules: SafetyRules;
   online: boolean;
-  maintenance: boolean;
   lastSeen: number;
-  lastService: number;
-  nextService: number;
-  runtimeHours: number;
   scenario: DeviceScenario | null;
   slope: number | null;
   history: HistorySample[];
   value: number;
+  domain: Exclude<SafetyDomain, 'leak'>;
+  unitId: string;
+  source: string;
+  ruleRef: string;
+  suggestion: string;
+  supportsLow: boolean;
+  supportsRate: boolean;
+  stack?: {
+    warehouseId: string; row: string; column: number; material: string; batch: string;
+    ambient: number; humidity: number; storedAt: number; checkedAt: number;
+    ambientException: boolean;
+  };
+}
+
+export interface SafetyEvent {
+  id: string;
+  name: string;
+  area: string;
+  source: string;
+  ruleRef: string;
+  suggestion: string;
+  active: boolean;
+  changedAt: number;
 }
 
 export interface SafetyAlarm {
@@ -78,35 +95,14 @@ export interface SafetyAlarm {
   snoozedUntil: number;
   escalatedAt?: number;
   initialReading?: string;
-}
-
-export interface MaintenanceOrder {
-  id: string;
-  deviceId: string;
-  title: string;
-  owner: string;
-  priority: OrderPriority;
-  plannedAt: number;
-  status: OrderStatus;
-  source: string;
-  note?: string;
-  createdAt: number;
-  startedAt?: number;
-  completedAt?: number;
-  result?: string;
-  acceptance?: boolean[];
-  alarmId?: string;
-}
-
-export interface CreateOrderInput {
-  deviceId: string;
-  title: string;
-  owner: string;
-  priority: OrderPriority;
-  plannedAt: number;
-  source: string;
-  note?: string;
-  alarmId?: string;
+  resolutionReason?: string;
+  domain?: SafetyDomain;
+  ruleRef?: string;
+  clearedAt?: number | null;
+  reviewedAt?: number;
+  reviewer?: string;
+  reviewNote?: string;
+  relatedDeviceIds?: string[];
 }
 
 export interface AlarmSignal {
@@ -118,4 +114,5 @@ export interface AlarmSignal {
   threshold: string;
   durationMs: number;
   suggestion: string;
+  relatedDeviceIds?: string[];
 }
