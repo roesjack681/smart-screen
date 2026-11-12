@@ -9,15 +9,45 @@ export interface RiskUnit {
   id: string;
   name: string;
   area: string;
-  /** 示意布局网格坐标 */
+  /** 园区世界坐标（米，示意） */
   gridX: number;
   gridZ: number;
+  /** 绕 Y 轴朝向（弧度，仅 0 / ±2 / π / -π/2） */
+  yaw: number;
   height: number;
+  /** 建筑形态，决定外观差异 */
+  form:
+    | 'blend'
+    | 'tankfarm'
+    | 'longshop'
+    | 'openyard'
+    | 'cooling'
+    | 'warehouse'
+    | 'confined'
+    | 'loading'
+    | 'office'
+    | 'pumproom'
+    | 'electrical'
+    | 'gate';
   baseLevel: RiskLevel;
   currentLevel: RiskLevel;
   activeTriggerIds: string[];
   reviewStatus: ReviewStatus;
   triggers: string[];
+}
+
+/** 建筑内部独立区域（告警可精确到 zone） */
+export interface RiskZone {
+  id: string;
+  unitId: string;
+  name: string;
+  /** 建筑本地坐标：相对单元中心 */
+  lx: number;
+  lz: number;
+  lw: number;
+  ld: number;
+  lh: number;
+  currentLevel: RiskLevel;
 }
 
 export interface ParkOperation {
@@ -34,6 +64,8 @@ export interface ParkOperation {
 export interface ParkAlarm {
   id: string;
   unitId: string;
+  /** 精确到建筑内区域 */
+  zoneId: string;
   type: string;
   location: string;
   occurredAt: string;

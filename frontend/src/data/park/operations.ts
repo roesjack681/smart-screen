@@ -26,7 +26,7 @@ export function createBaseOperations(): ParkOperation[] {
     {
       id: 'OP003',
       unitId: 'U03',
-      name: '提取车间A区临时动火',
+      name: '合成车间A区临时动火',
       type: '动火',
       plannedStart: '2026-11-11 10:30',
       plannedEnd: '2026-11-11 15:00',
@@ -76,7 +76,7 @@ export function createBaseOperations(): ParkOperation[] {
     {
       id: 'OP008',
       unitId: 'U01',
-      name: '调配线拆除支架',
+      name: '产线支架拆除',
       type: '拆除',
       plannedStart: '2026-11-11 09:30',
       plannedEnd: '2026-11-11 14:00',

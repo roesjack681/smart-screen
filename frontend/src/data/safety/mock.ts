@@ -1,16 +1,16 @@
 import { DEFAULT_RULES } from '@/utils/safety/rules';
 import type { MaintenanceOrder, SafetyAlarm, SafetyDevice, SafetyRules } from '@/types/safety';
 
-export const areas = ['提取车间', '储罐区', '公用工程'] as const;
+export const areas = ['合成车间', '储罐区', '公用工程'] as const;
 
 const definitions: Array<
   [string, string, string, string, string, string, number, number, number]
 > = [
-  ['EXT-01', '1号萃取罐', '提取车间', 'TI-101', '温度', '℃', 62.4, 0, 96],
-  ['EXT-02', '2号萃取罐', '提取车间', 'TI-102', '温度', '℃', 58.7, 1.2, 89],
+  ['EXT-01', '1号反应釜', '合成车间', 'TI-101', '温度', '℃', 62.4, 0, 96],
+  ['EXT-02', '2号反应釜', '合成车间', 'TI-102', '温度', '℃', 58.7, 1.2, 89],
   ['TNK-01', '乙醇储罐', '储罐区', 'TI-201', '温度', '℃', 28.6, 2.1, 98],
   ['CLG-01', '冷却循环系统', '公用工程', 'TI-301', '温度', '℃', 22.8, 0.5, 95],
-  ['EXT-P1', '萃取压力单元', '提取车间', 'PI-101', '压力', 'MPa', 0.31, 2.8, 97],
+  ['EXT-P1', '反应压力单元', '合成车间', 'PI-101', '压力', 'MPa', 0.31, 2.8, 97],
   ['PMP-01', '物料循环泵', '公用工程', 'VI-101', '振动', 'mm/s', 2.1, 3.4, 92],
 ];
 

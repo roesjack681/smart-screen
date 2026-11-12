@@ -1,10 +1,46 @@
+.ps-homepage {
+  --ps-text: #eaf3fa;
+  --ps-muted: #a1bbcf;
+  --ps-page-title-size: 24px;
+  --ps-page-heading-padding: 12px 0 10px;
+  font-size: 14px;
+  font-family: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+}
+
+.ps-homepage .ps-topbar {
+  height: 72px;
+}
+
+.ps-homepage .ps-topbar nav button {
+  font-size: 14px;
+}
+
+.ps-homepage .ps-brand span {
+  font-size: 10px;
+  color: #9db6ca;
+}
+
+.ps-homepage .ps-operating-status {
+  font-size: 11px;
+}
+
+.ps-homepage .ps-subtle,
+.ps-homepage .ps-link-button {
+  font-size: 12px;
+}
+
+.ps-homepage .ps-footer {
+  font-size: 11px;
+  color: #8faec4;
+}
+
 .park-overview {
   flex: 1;
   min-height: 0;
   height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 10px;
   overflow: hidden;
 }
 
@@ -15,14 +51,23 @@
 }
 
 .park-overview__metrics.ps-metrics > article {
-  min-height: 72px;
-  padding: 10px 14px;
-  gap: 12px;
+  min-height: 96px;
+  padding: 12px 16px;
+  gap: 14px;
+  background: #10283b;
+  border-color: #2b485e;
+}
+
+.park-overview__metrics.ps-metrics > article > div:nth-child(2) > span {
+  font-size: 13px;
+  color: #b4cbdc;
 }
 
 .park-overview__metrics.ps-metrics strong {
-  font-size: 26px;
-  margin: 2px 0;
+  font-size: 34px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0;
 }
 
 .park-overview__metrics.ps-metrics strong small {
@@ -30,8 +75,8 @@
 }
 
 .park-overview__metrics .ps-metric-icon {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
 }
 
 .park-overview__metrics .ps-metric-decoration,
@@ -60,7 +105,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 5px 1px 3px;
+  padding: 2px 6px 2px 4px;
   border-radius: 3px;
   background: color-mix(in srgb, var(--lv) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--lv) 35%, transparent);
@@ -76,9 +121,9 @@
 }
 
 .park-level-chip b {
-  font: 11px/1 'Bahnschrift', 'Consolas', monospace;
-  color: #d5ebf5;
-  font-weight: 500;
+  font: 12px/1.1 'Bahnschrift', 'Consolas', monospace;
+  color: #eaf3fa;
+  font-weight: 600;
 }
 
 .park-metric-mini {
@@ -91,8 +136,8 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font: 10px/1 'Bahnschrift', 'Consolas', monospace;
-  color: #8fb0c3;
+  font: 12px/1.2 'Bahnschrift', 'Consolas', monospace;
+  color: #b4cbdc;
 }
 
 .park-state-pill[data-state='pending'] {
@@ -126,7 +171,7 @@
 .park-overview__main {
   display: grid;
   grid-template-columns: minmax(200px, 22%) minmax(0, 1fr) minmax(220px, 26%);
-  gap: 8px;
+  gap: 10px;
   align-items: stretch;
   min-height: 0;
   width: 100%;
@@ -145,9 +190,25 @@
 .park-overview__center .ps-panel-header,
 .park-overview__left .ps-panel-header,
 .park-overview__right .ps-panel-header {
-  min-height: 36px;
-  padding: 0 12px;
+  min-height: 42px;
+  padding: 0 14px;
   flex-shrink: 0;
+}
+
+.park-overview .ps-panel {
+  background: #0c2031;
+  border-color: #2a4358;
+}
+
+.park-overview .ps-panel-header h2 {
+  font-size: 15px;
+  color: #edf5fc;
+  font-weight: 600;
+}
+
+.park-overview .ps-panel-header h2 small {
+  font-size: 12px;
+  color: #9bb6cb;
 }
 
 .park-overview__map {
@@ -162,68 +223,12 @@
   margin-top: 0;
 }
 
-.park-op-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  padding: 8px 10px;
-  flex-shrink: 0;
-}
-
-.park-op-stats > div {
-  background: #0c2233;
-  border: 1px solid #243f52;
-  border-radius: 4px;
-  padding: 6px 4px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.park-op-stats__icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  display: grid;
-  place-items: center;
-  color: #8fb0c3;
-  background: #16344a55;
-}
-
-.park-op-stats__icon[data-state='ongoing'] {
-  color: #f59a38;
-  background: #f59a3818;
-}
-
-.park-op-stats__icon[data-state='pending'] {
-  color: #438dfa;
-  background: #438dfa18;
-}
-
-.park-op-stats__icon[data-state='paused'] {
-  color: #ebcb4b;
-  background: #ebcb4b18;
-}
-
-.park-op-stats__icon[data-state='completed'] {
-  color: #4ed9b3;
-  background: #4ed9b318;
-}
-
-.park-op-stats b {
-  font: 15px/1 'Bahnschrift', 'Consolas', monospace;
-  color: #d8eef8;
-  font-weight: 500;
-}
-
 .park-state-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 4px;
   flex-shrink: 0;
   color: #8fb0c3;
@@ -264,8 +269,8 @@
 }
 
 .park-feed__glyph {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 5px;
   display: grid;
   place-items: center;
@@ -293,13 +298,15 @@
 .park-feed {
   list-style: none;
   margin: 0;
-  padding: 0 10px 8px;
+  padding: 0 12px 8px;
   display: flex;
   flex-direction: column;
   gap: 0;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #36576e transparent;
 }
 
 .park-feed > li {
@@ -307,9 +314,9 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 0;
+  padding: 9px 0;
   border-bottom: 1px solid #1c3445;
-  min-height: 0;
+  flex-shrink: 0;
 }
 
 .park-feed > li > div {
@@ -323,9 +330,9 @@
 
 .park-feed strong {
   display: block;
-  font-size: 11px;
-  font-weight: 500;
-  color: #bfd6e4;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e0edf7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -334,9 +341,10 @@
 .park-feed p,
 .park-feed span[data-state],
 .park-feed time {
-  font-size: 10px;
-  color: #6f91a6;
-  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a0bbce;
+  margin-top: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -363,7 +371,7 @@
 }
 
 .park-feed__tag {
-  font-size: 10px !important;
+  font-size: 12px !important;
   color: #f59a38 !important;
   white-space: nowrap;
 }
@@ -373,8 +381,8 @@
   justify-content: center;
   align-items: center;
   gap: 6px;
-  color: #56788f;
-  font-size: 11px;
+  color: #9bb6cb;
+  font-size: 12px;
   padding: 8px 0 !important;
   border: 0 !important;
 }
@@ -382,8 +390,8 @@
 .park-alcohol {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 10px 12px;
   flex-shrink: 0;
 }
 
@@ -391,7 +399,7 @@
   background: #0c2233;
   border: 1px solid #243f52;
   border-radius: 4px;
-  padding: 8px;
+  padding: 10px;
 }
 
 .park-alcohol__wide {
@@ -402,9 +410,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
-  color: #6f91a6;
-  margin-bottom: 4px;
+  font-size: 12px;
+  color: #b0c7d8;
+  margin-bottom: 6px;
 }
 
 .park-alcohol__meta {
@@ -412,30 +420,34 @@
   align-items: center;
   gap: 4px;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 12px;
   color: #f59a38;
 }
 
 .park-alcohol__meta.muted {
-  color: #6f91a6;
+  color: #9bb6cb;
 }
 
 .park-alcohol b {
   display: block;
-  font: 18px/1.1 'Bahnschrift', 'Consolas', monospace;
-  color: #e3f4fb;
-  font-weight: 500;
+  font: 26px/1.15 'Bahnschrift', 'Consolas', monospace;
+  color: #edf6fc;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.park-alcohol__wide b {
+  font-size: 19px;
+}
+
 .park-overview__bottom {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
   flex-shrink: 0;
-  height: 120px;
+  height: 210px;
   min-height: 0;
   overflow: hidden;
 }
@@ -448,7 +460,7 @@
 }
 
 .park-overview__bottom .ps-panel-header {
-  min-height: 32px;
+  min-height: 38px;
   padding: 0 12px;
   flex-shrink: 0;
 }
@@ -461,14 +473,17 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #36576e transparent;
 }
 
 .park-bottom-list > li {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 8px;
-  padding: 4px 0;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 0;
+  flex-shrink: 0;
   border-bottom: 1px solid #1c3445;
 }
 
@@ -477,16 +492,16 @@
 }
 
 .park-bottom-list time {
-  font: 10px 'Consolas', monospace;
-  color: #6a8da3;
+  font: 12px 'Consolas', monospace;
+  color: #a0bbce;
   padding-top: 1px;
 }
 
 .park-bottom-list strong {
   display: block;
-  font-size: 11px;
-  font-weight: 500;
-  color: #c5dce8;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e0edf7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -497,11 +512,47 @@
   align-items: center;
   gap: 6px;
   margin-top: 1px;
-  font-size: 10px;
-  color: #6f91a6;
+  font-size: 12px;
+  color: #a0bbce;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-height: 820px) {
+  .ps-homepage .ps-topbar {
+    height: 64px;
+  }
+
+  .ps-homepage {
+    --ps-page-heading-padding: 8px 0;
+  }
+
+  .park-overview__metrics.ps-metrics > article {
+    min-height: 84px;
+    padding: 8px 12px;
+  }
+
+  .park-overview__metrics.ps-metrics strong {
+    font-size: 30px;
+  }
+
+  .park-overview__bottom {
+    height: 180px;
+  }
+
+  .park-overview__main .ps-panel-header {
+    min-height: 36px;
+  }
+
+  .park-alcohol {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .park-alcohol > div {
+    padding: 7px 8px;
+  }
 }
 
 .park-bottom-list i {
@@ -516,9 +567,5 @@
 @media (max-width: 1100px) {
   .park-overview__main {
     grid-template-columns: minmax(180px, 24%) minmax(0, 48%) minmax(200px, 28%);
-  }
-
-  .park-scenario-inline {
-    display: none;
   }
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import OpStateRing3D from '@/components/park/OpStateRing3D.vue';
 import ParkRiskMap3D from '@/components/park/ParkRiskMap3D.vue';
 import UnitDetailDrawer from '@/components/park/UnitDetailDrawer.vue';
 import PsIcon from '@/components/safety/PsIcon.vue';
@@ -25,17 +26,6 @@ const opStateCounts = computed(() => {
 });
 
 const levelOrder: RiskLevel[] = ['red', 'orange', 'yellow', 'blue'];
-
-const opStatItems: Array<{
-  key: OperationState;
-  icon: string;
-  label: string;
-}> = [
-  { key: 'ongoing', icon: 'Play', label: '进行中' },
-  { key: 'pending', icon: 'Clock3', label: '待开工' },
-  { key: 'paused', icon: 'Pause', label: '暂停' },
-  { key: 'completed', icon: 'CircleCheck', label: '已完成' },
-];
 
 const opStateIcon: Record<OperationState, string> = {
   ongoing: 'Play',
@@ -157,14 +147,7 @@ function alarmIcon(type: string): string {
             进入监控 <PsIcon name="ChevronRight" :size="14" />
           </button>
         </header>
-        <div class="park-op-stats">
-          <div v-for="item in opStatItems" :key="item.key" :title="item.label">
-            <span class="park-op-stats__icon" :data-state="item.key">
-              <PsIcon :name="item.icon" :size="13" />
-            </span>
-            <b>{{ opStateCounts[item.key] }}</b>
-          </div>
-        </div>
+        <OpStateRing3D :counts="opStateCounts" />
         <ul class="park-feed">
           <li v-for="op in park.operations.slice(0, 3)" :key="op.id">
             <div>
@@ -190,7 +173,7 @@ function alarmIcon(type: string): string {
             v-for="al in park.keyAlarms.slice(0, 3)"
             :key="al.id"
             class="park-feed__click"
-            @click="park.selectUnit(al.unitId)"
+            @click="park.selectZone(al.zoneId)"
           >
             <span class="park-feed__glyph hot" :title="al.type">
               <PsIcon :name="alarmIcon(al.type)" :size="14" />
@@ -221,7 +204,7 @@ function alarmIcon(type: string): string {
 
       <aside class="ps-panel park-overview__right">
         <header class="ps-panel-header">
-          <h2><i class="ps-section-mark" />酒精香精风险</h2>
+          <h2><i class="ps-section-mark" />可燃气体风险</h2>
           <button class="ps-link-button" type="button" @click="go('production')">
             生产安全入口 <PsIcon name="ChevronRight" :size="14" />
           </button>
@@ -263,14 +246,14 @@ function alarmIcon(type: string): string {
             v-for="al in park.pendingAlarms.slice(0, 3)"
             :key="al.id"
             class="park-feed__click"
-            @click="park.selectUnit(al.unitId)"
+            @click="park.selectZone(al.zoneId)"
           >
             <span class="park-feed__glyph" :title="al.type">
               <PsIcon :name="alarmIcon(al.type)" :size="14" />
             </span>
             <div>
               <strong>{{ al.type }}</strong>
-              <p>{{ al.summary }}</p>
+              <p>{{ al.location }}</p>
             </div>
             <span class="park-state-icon warn" title="待处理">
               <PsIcon name="CircleAlert" :size="14" />

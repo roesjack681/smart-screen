@@ -11,6 +11,8 @@ import {
 const park = useParkStore();
 
 const unit = computed(() => park.selectedUnit);
+const zone = computed(() => park.selectedZone);
+const zones = computed(() => (unit.value ? park.zonesOfUnit(unit.value.id) : []));
 const timeline = computed(() => (unit.value ? park.unitTimeline(unit.value.id) : []));
 const ops = computed(() => (unit.value ? park.relatedOperations(unit.value.id) : []));
 const alarms = computed(() => (unit.value ? park.relatedAlarms(unit.value.id) : []));
@@ -28,7 +30,10 @@ function close(): void {
           <div>
             <p class="park-unit-drawer__eyebrow">风险单元详情 · 演示</p>
             <h2>{{ unit.name }}</h2>
-            <span>{{ unit.id }} · {{ unit.area }}</span>
+            <span>
+              {{ unit.id }} · {{ unit.area }}
+              <template v-if="zone"> · 当前区域 {{ zone.name }}</template>
+            </span>
           </div>
           <button class="ps-icon-button" type="button" aria-label="关闭" @click="close">
             <PsIcon name="X" :size="18" />
@@ -64,6 +69,25 @@ function close(): void {
           </div>
 
           <section>
+            <h3>建筑内独立区域</h3>
+            <ul class="park-unit-drawer__zones">
+              <li
+                v-for="z in zones"
+                :key="z.id"
+                :class="{ active: z.id === park.selectedZoneId, alarmed: park.alarmedZoneIds.has(z.id) }"
+                @click="park.selectZone(z.id, true)"
+              >
+                <i :style="{ background: RISK_LEVEL_COLOR[z.currentLevel] }" />
+                <div>
+                  <strong>{{ z.name }}</strong>
+                  <span>{{ z.id }} · {{ RISK_LEVEL_LABEL[z.currentLevel] }}</span>
+                </div>
+                <em v-if="park.alarmedZoneIds.has(z.id)">告警</em>
+              </li>
+            </ul>
+          </section>
+
+          <section>
             <h3>触发原因</h3>
             <ul v-if="unit.triggers.length" class="park-unit-drawer__list">
               <li v-for="(t, i) in unit.triggers" :key="i">{{ t }}</li>
@@ -85,8 +109,14 @@ function close(): void {
           <section>
             <h3>关联告警</h3>
             <ul v-if="alarms.length" class="park-unit-drawer__list">
-              <li v-for="al in alarms" :key="al.id">
+              <li
+                v-for="al in alarms"
+                :key="al.id"
+                class="park-unit-drawer__alarm"
+                @click="park.selectZone(al.zoneId, true)"
+              >
                 <strong>{{ al.type }}</strong>
+                <span>{{ al.location }}</span>
                 <span>{{ al.occurredAt }} · {{ al.summary }}</span>
               </li>
             </ul>
@@ -196,6 +226,62 @@ function close(): void {
   letter-spacing: 0.5px;
 }
 
+.park-unit-drawer__zones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.park-unit-drawer__zones li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #243f52;
+  background: #0d2233;
+  border-radius: 4px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.park-unit-drawer__zones li:hover,
+.park-unit-drawer__zones li.active {
+  border-color: #3d7f98;
+}
+
+.park-unit-drawer__zones li.alarmed {
+  border-color: #f0525266;
+}
+
+.park-unit-drawer__zones i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.park-unit-drawer__zones strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #d7ebf4;
+}
+
+.park-unit-drawer__zones span {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  color: #6f91a6;
+}
+
+.park-unit-drawer__zones em {
+  font-style: normal;
+  font-size: 10px;
+  color: #f05252;
+}
+
 .park-unit-drawer__list {
   list-style: none;
   margin: 0;
@@ -205,7 +291,8 @@ function close(): void {
   gap: 8px;
 }
 
-.park-unit-drawer__list li {
+.park-unit-drawer__list li,
+.park-unit-drawer__alarm {
   border: 1px solid #243f52;
   background: #0d2233;
   border-radius: 4px;
@@ -214,14 +301,26 @@ function close(): void {
   color: #b7cfdc;
 }
 
-.park-unit-drawer__list strong {
+.park-unit-drawer__alarm {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.park-unit-drawer__alarm:hover {
+  border-color: #3d7f98;
+}
+
+.park-unit-drawer__list strong,
+.park-unit-drawer__alarm strong {
   display: block;
   font-weight: 500;
   color: #d7ebf4;
-  margin-bottom: 4px;
 }
 
-.park-unit-drawer__list span {
+.park-unit-drawer__list span,
+.park-unit-drawer__alarm span {
   display: block;
   font-size: 11px;
   color: #6f91a6;
