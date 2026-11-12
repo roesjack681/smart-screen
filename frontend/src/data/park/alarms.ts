@@ -1,4 +1,5 @@
 import type { ParkAlarm, RiskChangeItem } from '@/types/park';
+import { parkDemoDateTime } from '@/utils/park-demo-time';
 
 /** 6条：待处理2、处理中2、已关闭2；未关闭4；均绑定精确区域 */
 export function createBaseAlarms(): ParkAlarm[] {
@@ -9,7 +10,7 @@ export function createBaseAlarms(): ParkAlarm[] {
       zoneId: 'Z02-A',
       type: '可燃气体报警',
       location: '乙醇储罐区 · 1#罐位 GS002',
-      occurredAt: '2026-11-11 09:42',
+      occurredAt: parkDemoDateTime('08:42'),
       handlingState: 'pending',
       summary: '二级报警，待现场确认',
       isKey: true,
@@ -20,7 +21,7 @@ export function createBaseAlarms(): ParkAlarm[] {
       zoneId: 'Z01-A',
       type: '泄漏识别',
       location: '反应调配区 · 反应间 CAM-01',
-      occurredAt: '2026-11-11 09:18',
+      occurredAt: parkDemoDateTime('08:18'),
       handlingState: 'pending',
       summary: '溶剂泄漏待复核（演示素材）',
       isKey: true,
@@ -31,7 +32,7 @@ export function createBaseAlarms(): ParkAlarm[] {
       zoneId: 'Z05-A',
       type: '压力超限',
       location: '冷却循环站 · 循环泵区 PI-301',
-      occurredAt: '2026-11-11 08:55',
+      occurredAt: parkDemoDateTime('08:55'),
       handlingState: 'processing',
       summary: '高报处理中',
       isKey: true,
@@ -42,7 +43,7 @@ export function createBaseAlarms(): ParkAlarm[] {
       zoneId: 'Z06-C',
       type: '温度关注',
       location: '原料库东侧 · 检温点 TW-12',
-      occurredAt: '2026-11-11 08:20',
+      occurredAt: parkDemoDateTime('08:20'),
       handlingState: 'processing',
       summary: '包温相对温差关注',
       isKey: false,
@@ -53,7 +54,7 @@ export function createBaseAlarms(): ParkAlarm[] {
       zoneId: 'Z08-A',
       type: '可燃气体报警',
       location: '装卸鹤位 · 1#鹤管 GS008',
-      occurredAt: '2026-11-10 16:10',
+      occurredAt: parkDemoDateTime('16:10', 1),
       handlingState: 'closed',
       summary: '已关闭历史事件',
       isKey: false,
@@ -64,7 +65,7 @@ export function createBaseAlarms(): ParkAlarm[] {
       zoneId: 'Z04-A',
       type: '工艺异常',
       location: '动火作业集中区 · 动火点A',
-      occurredAt: '2026-11-10 11:05',
+      occurredAt: parkDemoDateTime('11:05', 1),
       handlingState: 'closed',
       summary: '已关闭历史事件',
       isKey: false,
@@ -81,7 +82,7 @@ export function createBaseRiskChanges(): RiskChangeItem[] {
       fromLevel: 'orange',
       toLevel: 'red',
       reason: '反应间溶剂大面积泄漏待复核',
-      at: '2026-11-11 09:18',
+      at: parkDemoDateTime('08:18'),
     },
     {
       id: 'RC002',
@@ -90,7 +91,7 @@ export function createBaseRiskChanges(): RiskChangeItem[] {
       fromLevel: 'yellow',
       toLevel: 'orange',
       reason: '1#罐位可燃气体二级报警',
-      at: '2026-11-11 09:42',
+      at: parkDemoDateTime('08:42'),
     },
     {
       id: 'RC003',
@@ -98,17 +99,17 @@ export function createBaseRiskChanges(): RiskChangeItem[] {
       unitName: '动火作业集中区',
       fromLevel: 'yellow',
       toLevel: 'orange',
-      reason: '动火点A非固定动火作业开始',
-      at: '2026-11-11 08:05',
+      reason: '动火点A固定动火区外作业开始',
+      at: parkDemoDateTime('08:05'),
     },
     {
       id: 'RC004',
       unitId: 'U05',
       unitName: '冷却循环站',
       fromLevel: 'blue',
-      toLevel: 'orange',
+      toLevel: 'yellow',
       reason: '循环泵区压力超限高报',
-      at: '2026-11-11 08:55',
+      at: parkDemoDateTime('08:55'),
     },
   ];
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import OpStateRing3D from '@/components/park/OpStateRing3D.vue';
-import ParkRiskMap3D from '@/components/park/ParkRiskMap3D.vue';
+import ParkRiskMapDistribution from '@/components/park/ParkRiskMapDistribution.vue';
 import UnitDetailDrawer from '@/components/park/UnitDetailDrawer.vue';
 import PsIcon from '@/components/safety/PsIcon.vue';
 import { useParkStore } from '@/stores/park';
@@ -192,13 +192,13 @@ function alarmIcon(type: string): string {
         <header class="ps-panel-header">
           <h2>
             <i class="ps-section-mark" />
-            园区风险单元图
-            <small>三维示意</small>
+            园区风险单元实时分布
+            <small>二维示意</small>
           </h2>
           <span class="ps-subtle">点击单元查看详情</span>
         </header>
         <div class="park-overview__map">
-          <ParkRiskMap3D />
+          <ParkRiskMapDistribution />
         </div>
       </div>
 

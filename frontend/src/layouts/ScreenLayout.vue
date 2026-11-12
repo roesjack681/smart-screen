@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import PsIcon from '@/components/safety/PsIcon.vue';
 import OverviewView from '@/views/OverviewView.vue';
+import OperationsView from '@/views/OperationsView.vue';
 import SafetyPanel from '@/components/safety/SafetyPanel.vue';
 import SafetyControls from '@/components/safety/SafetyControls.vue';
 import { useSafetyBridge } from '@/composables/useSafetyBridge';
@@ -174,6 +175,7 @@ onBeforeUnmount(() => {
     <main class="ps-main">
       <div class="ps-main-body">
         <OverviewView v-if="view === 'overview'" @navigate="go" />
+        <OperationsView v-else-if="view === 'operations'" @navigate="go" />
         <SafetyPanel v-else-if="view === 'production'" :store="safety" />
         <section v-else class="ps-panel ps-placeholder" aria-hidden="true" />
       </div>

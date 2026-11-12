@@ -5,6 +5,7 @@ import { createBaseAlarms, createBaseRiskChanges } from '@/data/park/alarms';
 import { createBaseOperations } from '@/data/park/operations';
 import { createBaseUnits } from '@/data/park/units';
 import { createBaseZones } from '@/data/park/zones';
+import { createParkDemoClock, parkDemoDateTime, parkDemoTimeAt } from '@/utils/park-demo-time';
 import type {
   AlcoholSummary,
   ParkAlarm,
@@ -16,7 +17,7 @@ import type {
   TimelineItem,
 } from '@/types/park';
 
-const DEMO_CLOCK = new Date('2026-11-11T10:00:00+08:00').getTime();
+const DEMO_CLOCK = createParkDemoClock();
 
 const SCENARIO_STEPS = [
   '重置：U03 黄，OP003 待开工',
@@ -26,6 +27,8 @@ const SCENARIO_STEPS = [
   '完成复核：U03·A1回橙，保留动火因素',
   '作业结束：OP003 完成，U03 回黄',
 ] as const;
+
+const SCENARIO_TIMES = ['09:00', '10:35', '10:42', '10:43', '10:58', '11:10'] as const;
 
 function cloneUnits(): RiskUnit[] {
   return createBaseUnits().map((u) => ({
@@ -134,7 +137,7 @@ export const useParkStore = defineStore('park', () => {
     const items: TimelineItem[] = [
       {
         id: 't0',
-        at: '2026-11-11 08:00',
+        at: parkDemoDateTime('08:00'),
         title: '基础监测',
         detail: `固有等级 ${unit.baseLevel}`,
       },
@@ -183,7 +186,7 @@ export const useParkStore = defineStore('park', () => {
       u03.currentLevel = 'orange';
       zA1.currentLevel = 'orange';
       u03.activeTriggerIds = ['R01'];
-      u03.triggers = ['A1工段：非固定动火区作业进行中'];
+      u03.triggers = ['A1工段：固定动火区外动火作业进行中'];
       riskChanges.value.unshift({
         id: 'RC-S1',
         unitId: 'U03',
@@ -191,7 +194,7 @@ export const useParkStore = defineStore('park', () => {
         fromLevel: 'yellow',
         toLevel: 'orange',
         reason: 'OP003 动火开始 · A1工段',
-        at: '2026-11-11 10:05',
+        at: parkDemoDateTime('10:35'),
       });
     }
 
@@ -199,7 +202,7 @@ export const useParkStore = defineStore('park', () => {
       u03.currentLevel = 'red';
       zA1.currentLevel = 'red';
       u03.activeTriggerIds = ['R01', 'R05'];
-      u03.triggers = ['A1工段：非固定动火区作业进行中', 'A1工段：可燃气体一级报警（演示情形）'];
+      u03.triggers = ['A1工段：固定动火区外动火作业进行中', 'A1工段：可燃气体一级报警（演示情形）'];
       u03.reviewStatus = 'pending';
       alarms.value.unshift({
         id: 'AL-S2',
@@ -207,13 +210,13 @@ export const useParkStore = defineStore('park', () => {
         zoneId: 'Z03-A',
         type: '可燃气体报警',
         location: '合成车间A区 · A1工段 GS003',
-        occurredAt: '2026-11-11 10:12',
+        occurredAt: parkDemoDateTime('10:42'),
         handlingState: 'pending',
         summary: '场景演示新增气体异常（定位 A1工段）',
         isKey: true,
       });
       alcohol.value.gasAlarmPoints = 3;
-      alcohol.value.lastAbnormalAt = '2026-11-11 10:12';
+      alcohol.value.lastAbnormalAt = parkDemoDateTime('10:42');
       riskChanges.value.unshift({
         id: 'RC-S2',
         unitId: 'U03',
@@ -221,12 +224,12 @@ export const useParkStore = defineStore('park', () => {
         fromLevel: 'orange',
         toLevel: 'red',
         reason: 'A1工段气体异常进入红区（预置演示情形）',
-        at: '2026-11-11 10:12',
+        at: parkDemoDateTime('10:42'),
       });
     }
 
     if (step >= 3) {
-      u03.triggers = ['A1工段：非固定动火区作业进行中', 'A1工段：气体报警已解除，待复核'];
+      u03.triggers = ['A1工段：固定动火区外动火作业进行中', 'A1工段：气体报警已解除，待复核'];
       u03.reviewStatus = 'pending';
       const alarm = alarms.value.find((a) => a.id === 'AL-S2');
       if (alarm) alarm.summary = 'A1工段测点已解除激活，处置与复核未完成';
@@ -236,7 +239,7 @@ export const useParkStore = defineStore('park', () => {
       u03.currentLevel = 'orange';
       zA1.currentLevel = 'orange';
       u03.activeTriggerIds = ['R01'];
-      u03.triggers = ['A1工段：非固定动火区作业进行中'];
+      u03.triggers = ['A1工段：固定动火区外动火作业进行中'];
       u03.reviewStatus = 'done';
       const alarm = alarms.value.find((a) => a.id === 'AL-S2');
       if (alarm) {
@@ -251,7 +254,7 @@ export const useParkStore = defineStore('park', () => {
         fromLevel: 'red',
         toLevel: 'orange',
         reason: 'A1工段完成演示复核，保留动火因素',
-        at: '2026-11-11 10:28',
+        at: parkDemoDateTime('10:58'),
       });
     }
 
@@ -269,11 +272,12 @@ export const useParkStore = defineStore('park', () => {
         fromLevel: 'orange',
         toLevel: 'yellow',
         reason: 'OP003 作业结束并确认',
-        at: '2026-11-11 10:40',
+        at: parkDemoDateTime('11:10'),
       });
     }
 
     scenarioStep.value = step;
+    demoTime.value = parkDemoTimeAt(SCENARIO_TIMES[step] || SCENARIO_TIMES[0]);
     if (step > 0) {
       selectZone('Z03-A', true);
     } else if (selectedUnitId.value === 'U03') {
