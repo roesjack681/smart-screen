@@ -169,9 +169,17 @@ onBeforeUnmount(() => {
           </h1>
         </div>
         <div v-if="page.owned" class="ps-page-actions">
+          <span class="park-scenario-inline" :title="park.scenarioLabel">
+            <em>场景</em>
+            {{ park.scenarioLabel }}
+          </span>
+          <button class="ps-button ps-button-small" type="button" @click="park.scenarioPrev()">上一步</button>
+          <button class="ps-button ps-button-primary ps-button-small" type="button" @click="park.scenarioNext()">
+            下一步
+          </button>
           <button class="ps-button ps-button-small" type="button" @click="park.scenarioReset()">
             <PsIcon name="RefreshCw" :size="15" />
-            重置场景
+            重置
           </button>
           <button
             class="ps-icon-button ps-fullscreen-button"
@@ -184,8 +192,10 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <OverviewView v-if="page.owned" @navigate="go" />
-      <section v-else class="ps-panel ps-placeholder" aria-hidden="true" />
+      <div class="ps-main-body">
+        <OverviewView v-if="page.owned" @navigate="go" />
+        <section v-else class="ps-panel ps-placeholder" aria-hidden="true" />
+      </div>
 
       <footer class="ps-footer">
         <span>
@@ -205,8 +215,77 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.ps-app {
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ps-topbar {
+  flex-shrink: 0;
+}
+
+.ps-main {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: none;
+  margin: 0;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.ps-page-header {
+  flex-shrink: 0;
+  min-height: 0;
+  padding: 8px 0 6px;
+}
+
+.ps-page-header h1 {
+  font-size: 20px;
+}
+
+.ps-main-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ps-footer {
+  flex-shrink: 0;
+  min-height: 28px;
+}
+
 .ps-placeholder {
-  min-height: 420px;
-  margin-top: 8px;
+  flex: 1;
+  min-height: 0;
+  margin-top: 0;
+}
+
+.park-scenario-inline {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: #8fb0c3;
+  margin-right: 4px;
+}
+
+.park-scenario-inline em {
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #6f92a7;
+  margin-right: 6px;
 }
 </style>

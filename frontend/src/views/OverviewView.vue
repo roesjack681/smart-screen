@@ -8,6 +8,7 @@ import {
   OPERATION_STATE_LABEL,
   RISK_LEVEL_COLOR,
   RISK_LEVEL_LABEL,
+  type OperationState,
   type RiskLevel,
 } from '@/types/park';
 
@@ -25,8 +26,34 @@ const opStateCounts = computed(() => {
 
 const levelOrder: RiskLevel[] = ['red', 'orange', 'yellow', 'blue'];
 
+const opStatItems: Array<{
+  key: OperationState;
+  icon: string;
+  label: string;
+}> = [
+  { key: 'ongoing', icon: 'Play', label: '进行中' },
+  { key: 'pending', icon: 'Clock3', label: '待开工' },
+  { key: 'paused', icon: 'Pause', label: '暂停' },
+  { key: 'completed', icon: 'CircleCheck', label: '已完成' },
+];
+
+const opStateIcon: Record<OperationState, string> = {
+  ongoing: 'Play',
+  pending: 'Clock3',
+  paused: 'Pause',
+  completed: 'CircleCheck',
+};
+
 function go(view: string): void {
   emit('navigate', view);
+}
+
+function alarmIcon(type: string): string {
+  if (type.includes('气体')) return 'Flame';
+  if (type.includes('泄漏')) return 'Droplets';
+  if (type.includes('压力')) return 'Gauge';
+  if (type.includes('温度') || type.includes('温')) return 'Thermometer';
+  return 'CircleAlert';
 }
 </script>
 
@@ -34,16 +61,23 @@ function go(view: string): void {
   <div class="park-overview">
     <section class="ps-metrics park-overview__metrics" aria-label="园区安全关键指标">
       <article class="park-metric-clickable" @click="go('risk')">
-        <div class="ps-metric-icon cyan"><PsIcon name="Layers" :size="22" /></div>
+        <div class="ps-metric-icon cyan"><PsIcon name="Layers" :size="20" /></div>
         <div>
           <span>风险单元总数</span>
           <strong>
             {{ park.units.length }}
             <small><em>个</em></small>
           </strong>
-          <p class="park-metric-levels">
-            <span v-for="lv in levelOrder" :key="lv" :style="{ color: RISK_LEVEL_COLOR[lv] }">
-              {{ RISK_LEVEL_LABEL[lv].slice(0, 2) }} {{ park.levelCounts[lv] }}
+          <p class="park-metric-levels" aria-label="四色数量">
+            <span
+              v-for="lv in levelOrder"
+              :key="lv"
+              class="park-level-chip"
+              :style="{ '--lv': RISK_LEVEL_COLOR[lv] }"
+              :title="`${RISK_LEVEL_LABEL[lv]} ${park.levelCounts[lv]}`"
+            >
+              <i />
+              <b>{{ park.levelCounts[lv] }}</b>
             </span>
           </p>
         </div>
@@ -53,14 +87,23 @@ function go(view: string): void {
       </article>
 
       <article class="park-metric-clickable" @click="go('operations')">
-        <div class="ps-metric-icon amber"><PsIcon name="Activity" :size="22" /></div>
+        <div class="ps-metric-icon amber"><PsIcon name="HardHat" :size="20" /></div>
         <div>
           <span>进行中危险作业</span>
           <strong>
             {{ park.ongoingOps.length }}
             <small><em>项</em></small>
           </strong>
-          <p>待开工 {{ opStateCounts.pending }} · 暂停 {{ opStateCounts.paused }}</p>
+          <p class="park-metric-mini">
+            <span class="park-state-pill" data-state="pending" :title="`待开工 ${opStateCounts.pending}`">
+              <PsIcon name="Clock3" :size="11" />
+              {{ opStateCounts.pending }}
+            </span>
+            <span class="park-state-pill" data-state="paused" :title="`暂停 ${opStateCounts.paused}`">
+              <PsIcon name="Pause" :size="11" />
+              {{ opStateCounts.paused }}
+            </span>
+          </p>
         </div>
         <button class="ps-metric-link" type="button" aria-label="进入危险作业" @click.stop="go('operations')">
           <PsIcon name="ArrowUpRight" :size="18" />
@@ -72,14 +115,19 @@ function go(view: string): void {
         :class="{ 'ps-metric-warning': park.pendingAlarms.length }"
         @click="go('production')"
       >
-        <div class="ps-metric-icon green"><PsIcon name="BellRing" :size="22" /></div>
+        <div class="ps-metric-icon green"><PsIcon name="BellRing" :size="20" /></div>
         <div>
           <span>待处理告警</span>
           <strong :class="park.pendingAlarms.length ? 'ps-text-amber' : ''">
             {{ park.pendingAlarms.length }}
             <small><em>条</em></small>
           </strong>
-          <p>重点预警 {{ park.keyAlarms.length }} 条</p>
+          <p class="park-metric-mini">
+            <span class="park-state-pill hot" :title="`重点预警 ${park.keyAlarms.length}`">
+              <PsIcon name="AlertTriangle" :size="11" />
+              {{ park.keyAlarms.length }}
+            </span>
+          </p>
         </div>
         <button class="ps-metric-link" type="button" aria-label="进入生产安全预警" @click.stop="go('production')">
           <PsIcon name="ArrowUpRight" :size="18" />
@@ -87,31 +135,19 @@ function go(view: string): void {
       </article>
 
       <article>
-        <div class="ps-metric-icon violet"><PsIcon name="Gauge" :size="22" /></div>
+        <div class="ps-metric-icon violet"><PsIcon name="Gauge" :size="20" /></div>
         <div>
           <span>园区整体风险指数</span>
           <strong>
             {{ park.overallIndex.toFixed(1) }}
             <small><em>分</em></small>
           </strong>
-          <p>演示值 · 等级映射待确认</p>
+          <p class="park-index-bar" title="演示值 · 等级映射待确认">
+            <i :style="{ width: `${Math.min(100, park.overallIndex)}%` }" />
+          </p>
         </div>
       </article>
     </section>
-
-    <div class="park-overview__scenario">
-      <div>
-        <span class="park-overview__scenario-label">场景演示</span>
-        <strong>{{ park.scenarioLabel }}</strong>
-      </div>
-      <div class="park-overview__scenario-actions">
-        <button class="ps-button ps-button-small" type="button" @click="park.scenarioPrev()">上一步</button>
-        <button class="ps-button ps-button-primary ps-button-small" type="button" @click="park.scenarioNext()">
-          下一步
-        </button>
-        <button class="ps-button ps-button-small" type="button" @click="park.scenarioReset()">重置</button>
-      </div>
-    </div>
 
     <section class="park-overview__main" aria-label="总览主体">
       <aside class="ps-panel park-overview__left">
@@ -122,18 +158,26 @@ function go(view: string): void {
           </button>
         </header>
         <div class="park-op-stats">
-          <div><small>进行中</small><b>{{ opStateCounts.ongoing }}</b></div>
-          <div><small>待开工</small><b>{{ opStateCounts.pending }}</b></div>
-          <div><small>暂停</small><b>{{ opStateCounts.paused }}</b></div>
-          <div><small>已完成</small><b>{{ opStateCounts.completed }}</b></div>
+          <div v-for="item in opStatItems" :key="item.key" :title="item.label">
+            <span class="park-op-stats__icon" :data-state="item.key">
+              <PsIcon :name="item.icon" :size="13" />
+            </span>
+            <b>{{ opStateCounts[item.key] }}</b>
+          </div>
         </div>
         <ul class="park-feed">
-          <li v-for="op in park.operations.slice(0, 5)" :key="op.id">
+          <li v-for="op in park.operations.slice(0, 3)" :key="op.id">
             <div>
               <strong>{{ op.name }}</strong>
               <p>{{ op.summary }}</p>
             </div>
-            <span :data-state="op.actualState">{{ OPERATION_STATE_LABEL[op.actualState] }}</span>
+            <span
+              class="park-state-icon"
+              :data-state="op.actualState"
+              :title="OPERATION_STATE_LABEL[op.actualState]"
+            >
+              <PsIcon :name="opStateIcon[op.actualState]" :size="14" />
+            </span>
           </li>
         </ul>
 
@@ -143,14 +187,17 @@ function go(view: string): void {
         </header>
         <ul class="park-feed">
           <li
-            v-for="al in park.keyAlarms.slice(0, 4)"
+            v-for="al in park.keyAlarms.slice(0, 3)"
             :key="al.id"
             class="park-feed__click"
             @click="park.selectUnit(al.unitId)"
           >
+            <span class="park-feed__glyph hot" :title="al.type">
+              <PsIcon :name="alarmIcon(al.type)" :size="14" />
+            </span>
             <div>
               <strong>{{ al.type }}</strong>
-              <p>{{ al.location }} · {{ al.summary }}</p>
+              <p>{{ al.location }}</p>
             </div>
             <time>{{ al.occurredAt.slice(11) }}</time>
           </li>
@@ -181,17 +228,29 @@ function go(view: string): void {
         </header>
         <div class="park-alcohol">
           <div>
-            <small>可燃气体测点</small>
+            <small>
+              <PsIcon name="Radio" :size="11" />
+              可燃气体测点
+            </small>
             <b>{{ park.alcohol.gasPointTotal }}</b>
-            <span>报警点位 {{ park.alcohol.gasAlarmPoints }}</span>
+            <span class="park-alcohol__meta">
+              <PsIcon name="Flame" :size="11" />
+              {{ park.alcohol.gasAlarmPoints }}
+            </span>
           </div>
           <div>
-            <small>泄漏待复核</small>
+            <small>
+              <PsIcon name="Droplets" :size="11" />
+              泄漏待复核
+            </small>
             <b class="ps-text-amber">{{ park.alcohol.leakPendingReview }}</b>
-            <span>演示摘要</span>
+            <span class="park-alcohol__meta muted">演示摘要</span>
           </div>
           <div class="park-alcohol__wide">
-            <small>最近异常</small>
+            <small>
+              <PsIcon name="Clock3" :size="11" />
+              最近异常
+            </small>
             <b>{{ park.alcohol.lastAbnormalAt || '暂无' }}</b>
           </div>
         </div>
@@ -201,16 +260,21 @@ function go(view: string): void {
         </header>
         <ul class="park-feed">
           <li
-            v-for="al in park.pendingAlarms.slice(0, 4)"
+            v-for="al in park.pendingAlarms.slice(0, 3)"
             :key="al.id"
             class="park-feed__click"
             @click="park.selectUnit(al.unitId)"
           >
+            <span class="park-feed__glyph" :title="al.type">
+              <PsIcon :name="alarmIcon(al.type)" :size="14" />
+            </span>
             <div>
               <strong>{{ al.type }}</strong>
               <p>{{ al.summary }}</p>
             </div>
-            <span class="park-feed__tag">待处理</span>
+            <span class="park-state-icon warn" title="待处理">
+              <PsIcon name="CircleAlert" :size="14" />
+            </span>
           </li>
           <li v-if="!park.pendingAlarms.length" class="park-feed__empty">暂无待处理告警</li>
         </ul>
@@ -218,7 +282,10 @@ function go(view: string): void {
         <header class="ps-panel-header park-overview__subhead">
           <h2><i class="ps-section-mark" />车辆预警</h2>
         </header>
-        <p class="park-feed__empty park-vehicle-empty">暂无演示记录</p>
+        <p class="park-feed__empty park-vehicle-empty">
+          <PsIcon name="Truck" :size="14" />
+          暂无演示记录
+        </p>
       </aside>
     </section>
 
@@ -228,11 +295,20 @@ function go(view: string): void {
           <h2><i class="ps-section-mark" />危险作业动态</h2>
         </header>
         <ul class="park-bottom-list">
-          <li v-for="op in park.operations" :key="op.id">
+          <li v-for="op in park.operations.slice(0, 3)" :key="op.id">
             <time>{{ op.plannedStart.slice(11, 16) }}</time>
             <div>
               <strong>{{ op.name }}</strong>
-              <span>{{ op.type }} · {{ OPERATION_STATE_LABEL[op.actualState] }}</span>
+              <span>
+                {{ op.type }}
+                <em
+                  class="park-state-icon inline"
+                  :data-state="op.actualState"
+                  :title="OPERATION_STATE_LABEL[op.actualState]"
+                >
+                  <PsIcon :name="opStateIcon[op.actualState]" :size="12" />
+                </em>
+              </span>
             </div>
           </li>
         </ul>
@@ -242,14 +318,14 @@ function go(view: string): void {
           <h2><i class="ps-section-mark" />近期风险变化</h2>
         </header>
         <ul class="park-bottom-list">
-          <li v-for="item in park.riskChanges.slice(0, 8)" :key="item.id">
+          <li v-for="item in park.riskChanges.slice(0, 3)" :key="item.id">
             <time>{{ item.at.slice(11) }}</time>
             <div>
               <strong>{{ item.unitName }}</strong>
               <span>
-                <i :style="{ background: RISK_LEVEL_COLOR[item.fromLevel] }" />
-                →
-                <i :style="{ background: RISK_LEVEL_COLOR[item.toLevel] }" />
+                <i class="park-level-dot" :style="{ background: RISK_LEVEL_COLOR[item.fromLevel] }" :title="RISK_LEVEL_LABEL[item.fromLevel]" />
+                <PsIcon name="ArrowRight" :size="11" />
+                <i class="park-level-dot" :style="{ background: RISK_LEVEL_COLOR[item.toLevel] }" :title="RISK_LEVEL_LABEL[item.toLevel]" />
                 {{ item.reason }}
               </span>
             </div>
