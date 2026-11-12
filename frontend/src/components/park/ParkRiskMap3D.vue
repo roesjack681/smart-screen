@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useParkStore } from '@/stores/park';
-import { RISK_LEVEL_COLOR, RISK_LEVEL_LABEL, type RiskLevel, type RiskUnit } from '@/types/park';
-
-type BuildingKind = 'workshop' | 'tank' | 'warehouse' | 'utility' | 'office' | 'loading' | 'gate';
+import { RISK_LEVEL_COLOR, RISK_LEVEL_LABEL, type RiskLevel } from '@/types/park';
+import {
+  buildCampusDecor,
+  buildUnitWithZones,
+  colorFor,
+} from '@/utils/park/campusFactory';
 
 const park = useParkStore();
 
@@ -14,19 +17,38 @@ const tooltip = ref<{
   visible: boolean;
   x: number;
   y: number;
-  name: string;
+  unitName: string;
+  zoneName: string;
   level: string;
-  triggers: number;
+  alarm: string;
 }>({
   visible: false,
   x: 0,
   y: 0,
-  name: '',
+  unitName: '',
+  zoneName: '',
   level: '',
-  triggers: 0,
+  alarm: '',
 });
 
 const levels: RiskLevel[] = ['red', 'orange', 'yellow', 'blue'];
+
+interface MapLabel {
+  id: string;
+  name: string;
+  level: RiskLevel;
+  width: number;
+  selected: boolean;
+}
+
+const mapLabels = ref<MapLabel[]>([]);
+const labelsHost = ref<HTMLElement | null>(null);
+const labelEls = new Map<string, HTMLElement>();
+let labelModelKey = '';
+const labelWorld = new THREE.Vector3();
+const LABEL_WIDTH = 128;
+const LABEL_HEIGHT = 26;
+const LABEL_SCREEN_Y_OFFSET = 18;
 
 let renderer: THREE.WebGLRenderer | null = null;
 let scene: THREE.Scene | null = null;
@@ -34,390 +56,122 @@ let camera: THREE.PerspectiveCamera | null = null;
 let controls: OrbitControls | null = null;
 let raycaster: THREE.Raycaster | null = null;
 let pointer = new THREE.Vector2(-10, -10);
+/** 区分拖拽与点击：按下后位移超过阈值则视为拖拽，松手不打开详情 */
+let pointerDownX = 0;
+let pointerDownY = 0;
+let dragMoved = false;
+const CLICK_DRAG_THRESHOLD_PX = 6;
 let animId = 0;
 let buildingGroup: THREE.Group | null = null;
-let labelGroup: THREE.Group | null = null;
 const unitGroups = new Map<string, THREE.Group>();
-const riskMats = new Map<string, THREE.MeshStandardMaterial[]>();
-const targetColors = new Map<string, THREE.Color>();
-const labelSprites = new Map<string, THREE.Sprite>();
+const zoneMats = new Map<string, THREE.MeshStandardMaterial>();
+const unitRings = new Map<string, THREE.Mesh>();
 const resizeObserver = ref<ResizeObserver | null>(null);
 
 const filteredIds = computed(() => new Set(park.visibleUnits.map((u) => u.id)));
-
-function colorFor(level: RiskLevel): THREE.Color {
-  return new THREE.Color(RISK_LEVEL_COLOR[level]);
-}
-
-function kindOf(unit: RiskUnit): BuildingKind {
-  if (unit.area.includes('储罐') || unit.name.includes('储罐')) return 'tank';
-  if (unit.name.includes('鹤位') || unit.name.includes('装卸')) return 'loading';
-  if (unit.name.includes('门禁') || unit.name.includes('通道')) return 'gate';
-  if (unit.area.includes('仓储') || unit.name.includes('库')) return 'warehouse';
-  if (unit.area.includes('综合') || unit.name.includes('办公')) return 'office';
-  if (unit.area.includes('公用') || unit.name.includes('泵') || unit.name.includes('变配') || unit.name.includes('冷却'))
-    return 'utility';
-  return 'workshop';
-}
-
-function makeRiskMat(level: RiskLevel, metal = 0.28, rough = 0.48): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
-    color: colorFor(level),
-    emissive: colorFor(level),
-    emissiveIntensity: 0.22,
-    metalness: metal,
-    roughness: rough,
-    transparent: true,
-    opacity: 0.96,
-  });
-}
-
-function makeNeutral(color: number, metal = 0.2, rough = 0.7): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color, metalness: metal, roughness: rough });
-}
-
-function addBox(
-  parent: THREE.Object3D,
-  w: number,
-  h: number,
-  d: number,
-  mat: THREE.Material,
-  x = 0,
-  y = 0,
-  z = 0,
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  parent.add(mesh);
-  return mesh;
-}
-
-function addCylinder(
-  parent: THREE.Object3D,
-  radiusTop: number,
-  radiusBottom: number,
-  height: number,
-  mat: THREE.Material,
-  x = 0,
-  y = 0,
-  z = 0,
-  radial = 20,
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radial), mat);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  parent.add(mesh);
-  return mesh;
-}
-
-function makeLabelSprite(text: string): THREE.Sprite {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 64;
-  const ctx = canvas.getContext('2d')!;
-  ctx.clearRect(0, 0, 256, 64);
-  ctx.fillStyle = 'rgba(8, 24, 38, 0.72)';
-  ctx.strokeStyle = 'rgba(64, 140, 170, 0.7)';
-  ctx.lineWidth = 2;
-  roundRect(ctx, 8, 12, 240, 40, 6);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#d7eef8';
-  ctx.font = 'bold 22px Microsoft YaHei, Segoe UI, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text.length > 8 ? `${text.slice(0, 8)}…` : text, 128, 32);
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
-  const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(2.4, 0.6, 1);
-  return sprite;
-}
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-): void {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-function buildUnitModel(unit: RiskUnit): THREE.Group {
-  const group = new THREE.Group();
-  group.userData.unitId = unit.id;
-  const kind = kindOf(unit);
-  const risk = makeRiskMat(unit.currentLevel);
-  const mats: THREE.MeshStandardMaterial[] = [risk];
-  const concrete = makeNeutral(0x1a3348, 0.1, 0.85);
-  const steel = makeNeutral(0x6f8798, 0.55, 0.35);
-  const dark = makeNeutral(0x0d1c2a, 0.15, 0.8);
-  const glass = makeNeutral(0x7ec8e8, 0.7, 0.15);
-  glass.transparent = true;
-  glass.opacity = 0.45;
-
-  // 基座地坪
-  addBox(group, 3.2, 0.08, 3.0, concrete, 0, 0.04, 0);
-
-  if (kind === 'tank') {
-    const h = Math.max(unit.height, 2.6);
-    for (const ox of [-0.85, 0.85]) {
-      const body = addCylinder(group, 0.55, 0.55, h, risk, ox, h / 2 + 0.08, 0);
-      body.userData.unitId = unit.id;
-      addCylinder(group, 0.58, 0.58, 0.1, steel, ox, h + 0.08, 0);
-      addCylinder(group, 0.12, 0.12, 0.45, steel, ox, h + 0.35, 0);
-    }
-    addBox(group, 2.6, 0.12, 0.18, steel, 0, 0.7, 1.1);
-    addBox(group, 0.18, 1.2, 0.18, steel, -1.3, 0.7, 0.6);
-    addBox(group, 0.18, 1.2, 0.18, steel, 1.3, 0.7, 0.6);
-  } else if (kind === 'loading') {
-    const h = Math.max(unit.height, 1.6);
-    const body = addBox(group, 2.6, h * 0.55, 1.4, risk, 0, h * 0.28, 0);
-    body.userData.unitId = unit.id;
-    addBox(group, 2.8, 0.12, 1.6, steel, 0, h * 0.55 + 0.08, 0);
-    addBox(group, 0.2, 1.4, 0.2, steel, -1.0, 0.9, 0.9);
-    addBox(group, 0.2, 1.4, 0.2, steel, 1.0, 0.9, 0.9);
-    addBox(group, 2.2, 0.1, 0.1, steel, 0, 1.55, 0.9);
-    addCylinder(group, 0.08, 0.08, 1.8, steel, 0, 0.9, 1.2);
-  } else if (kind === 'warehouse') {
-    const h = Math.max(unit.height, 1.8);
-    const body = addBox(group, 2.8, h, 2.2, risk, 0, h / 2 + 0.08, 0);
-    body.userData.unitId = unit.id;
-    // 人字屋顶
-    const roof = addBox(group, 3.0, 0.18, 2.4, steel, 0, h + 0.2, 0);
-    roof.rotation.z = 0;
-    addBox(group, 0.9, 1.1, 0.08, dark, 0, 0.65, 1.12);
-    addBox(group, 0.55, 0.55, 0.06, glass, -0.85, h * 0.55, 1.12);
-    addBox(group, 0.55, 0.55, 0.06, glass, 0.85, h * 0.55, 1.12);
-  } else if (kind === 'office') {
-    const h = Math.max(unit.height, 1.5);
-    const body = addBox(group, 2.4, h, 1.8, risk, 0, h / 2 + 0.08, 0);
-    body.userData.unitId = unit.id;
-    addBox(group, 2.5, 0.12, 1.9, steel, 0, h + 0.12, 0);
-    for (let i = -1; i <= 1; i++) {
-      addBox(group, 0.45, 0.4, 0.05, glass, i * 0.7, h * 0.55, 0.92);
-    }
-    addBox(group, 0.5, 0.85, 0.06, dark, 0, 0.5, 0.92);
-  } else if (kind === 'utility') {
-    const h = Math.max(unit.height, 1.8);
-    const body = addBox(group, 2.2, h * 0.75, 2.0, risk, 0, h * 0.4, 0);
-    body.userData.unitId = unit.id;
-    addBox(group, 1.2, h * 0.55, 1.1, risk, 0.7, h * 0.75, -0.2);
-    mats.push(risk);
-    addCylinder(group, 0.18, 0.22, h * 0.9, steel, -0.7, h * 0.55, 0.55);
-    addCylinder(group, 0.12, 0.12, 0.5, dark, -0.7, h * 1.05, 0.55);
-    addBox(group, 2.3, 0.1, 2.1, steel, 0, h * 0.78, 0);
-  } else if (kind === 'gate') {
-    const h = Math.max(unit.height, 1.3);
-    const body = addBox(group, 1.2, h, 1.0, risk, -0.9, h / 2 + 0.08, 0);
-    body.userData.unitId = unit.id;
-    addBox(group, 1.2, h, 1.0, risk, 0.9, h / 2 + 0.08, 0);
-    addBox(group, 3.0, 0.15, 0.25, steel, 0, h + 0.2, 0);
-    addBox(group, 2.2, 0.08, 1.8, concrete, 0, 0.06, 0.8);
-  } else {
-    // workshop 主厂房
-    const h = Math.max(unit.height, 2.2);
-    const body = addBox(group, 2.9, h, 2.3, risk, 0, h / 2 + 0.08, 0);
-    body.userData.unitId = unit.id;
-    addBox(group, 3.1, 0.16, 2.5, steel, 0, h + 0.16, 0);
-    // 侧附房
-    addBox(group, 1.1, h * 0.55, 1.2, risk, 1.5, h * 0.3, 0.4);
-    // 烟囱 / 排气
-    addCylinder(group, 0.14, 0.18, h * 0.7, steel, -1.0, h * 0.75, -0.7);
-    // 门窗带
-    addBox(group, 0.8, 1.1, 0.06, dark, 0, 0.7, 1.18);
-    for (let i = -1; i <= 1; i++) {
-      if (i === 0) continue;
-      addBox(group, 0.55, 0.5, 0.05, glass, i * 0.95, h * 0.55, 1.18);
-    }
-    // 屋面设备
-    addBox(group, 0.7, 0.35, 0.7, dark, 0.6, h + 0.4, -0.4);
-  }
-
-  // 风险光环底座
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(1.55, 1.75, 40),
-    new THREE.MeshBasicMaterial({
-      color: colorFor(unit.currentLevel),
-      transparent: true,
-      opacity: 0.35,
-      side: THREE.DoubleSide,
-    }),
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.09;
-  ring.userData.isRing = true;
-  group.add(ring);
-  riskMats.set(unit.id, mats);
-  group.userData.ring = ring;
-
-  return group;
-}
-
-function buildCampusDecor(): void {
-  if (!scene) return;
-  const decor = new THREE.Group();
-  decor.name = 'campus-decor';
-
-  // 大地面
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(34, 24),
-    new THREE.MeshStandardMaterial({ color: 0x0a1c2e, metalness: 0.08, roughness: 0.95 }),
-  );
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  decor.add(ground);
-
-  // 外围草坪带
-  const lawn = new THREE.Mesh(
-    new THREE.PlaneGeometry(32, 22),
-    new THREE.MeshStandardMaterial({ color: 0x0d2a22, metalness: 0.05, roughness: 0.92 }),
-  );
-  lawn.rotation.x = -Math.PI / 2;
-  lawn.position.y = 0.01;
-  decor.add(lawn);
-
-  // 厂区铺装
-  const plaza = new THREE.Mesh(
-    new THREE.PlaneGeometry(26, 18),
-    new THREE.MeshStandardMaterial({ color: 0x102437, metalness: 0.12, roughness: 0.88 }),
-  );
-  plaza.rotation.x = -Math.PI / 2;
-  plaza.position.y = 0.015;
-  decor.add(plaza);
-
-  const grid = new THREE.GridHelper(26, 26, 0x1c4a66, 0x123348);
-  grid.position.y = 0.02;
-  decor.add(grid);
-
-  const roadMat = new THREE.MeshStandardMaterial({ color: 0x152a3d, metalness: 0.1, roughness: 0.92 });
-  const curbMat = new THREE.MeshStandardMaterial({ color: 0x2a4d63, metalness: 0.2, roughness: 0.7 });
-
-  // 主干道十字 + 环线
-  const roads: Array<[number, number, number, number, number, number]> = [
-    [24, 0.05, 1.6, 0, 0.04, 0],
-    [1.6, 0.05, 18, 0, 0.04, 0],
-    [24, 0.05, 1.0, 0, 0.04, -5.8],
-    [24, 0.05, 1.0, 0, 0.04, 5.8],
-    [1.0, 0.05, 18, -8.4, 0.04, 0],
-    [1.0, 0.05, 18, 8.4, 0.04, 0],
-  ];
-  for (const [w, h, d, x, y, z] of roads) {
-    addBox(decor, w, h, d, roadMat, x, y, z);
-  }
-
-  // 路缘灯柱
-  for (let i = -3; i <= 3; i++) {
-    if (i === 0) continue;
-    for (const side of [-1, 1]) {
-      const pole = addCylinder(decor, 0.05, 0.05, 1.4, curbMat, i * 2.6, 0.75, side * 1.15);
-      addCylinder(decor, 0.12, 0.12, 0.12, makeNeutral(0x8fd7ef, 0.4, 0.3), pole.position.x, 1.5, pole.position.z);
-    }
-  }
-
-  // 围墙示意
-  const wallMat = makeNeutral(0x173247, 0.15, 0.8);
-  addBox(decor, 28, 0.7, 0.12, wallMat, 0, 0.35, -9.5);
-  addBox(decor, 28, 0.7, 0.12, wallMat, 0, 0.35, 9.5);
-  addBox(decor, 0.12, 0.7, 19, wallMat, -13.5, 0.35, 0);
-  addBox(decor, 0.12, 0.7, 19, wallMat, 13.5, 0.35, 0);
-
-  scene.add(decor);
-}
 
 function buildScene(): void {
   const host = canvasHost.value;
   if (!host) return;
 
   scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x081321, 0.018);
+  scene.fog = new THREE.Fog(0x081321, 48, 120);
 
-  camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
-  camera.position.set(14, 13, 16);
+  camera = new THREE.PerspectiveCamera(38, 1, 0.1, 220);
+  camera.position.set(24, 22, 28);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(Math.max(window.devicePixelRatio || 1, 1.5), 2));
   renderer.setClearColor(0x000000, 0);
   renderer.shadowMap.enabled = true;
   host.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
+  controls.dampingFactor = 0.12;
   controls.maxPolarAngle = Math.PI * 0.46;
-  controls.minDistance = 10;
-  controls.maxDistance = 36;
+  controls.minDistance = 14;
+  controls.maxDistance = 56;
   controls.target.set(0, 0.8, 0);
 
   raycaster = new THREE.Raycaster();
 
-  const ambient = new THREE.AmbientLight(0xb7d4ea, 0.62);
-  const key = new THREE.DirectionalLight(0xffffff, 1.15);
-  key.position.set(10, 18, 8);
+  scene.add(new THREE.AmbientLight(0xd8e6f2, 0.92));
+  const key = new THREE.DirectionalLight(0xffffff, 1.35);
+  key.position.set(12, 20, 10);
   key.castShadow = true;
-  const fill = new THREE.DirectionalLight(0x3a7ca8, 0.4);
-  fill.position.set(-12, 8, -10);
-  const rim = new THREE.DirectionalLight(0x56c8e0, 0.25);
-  rim.position.set(0, 8, -14);
-  scene.add(ambient, key, fill, rim);
+  const fill = new THREE.DirectionalLight(0x7eaac9, 0.5);
+  fill.position.set(-14, 10, -12);
+  scene.add(key, fill, new THREE.DirectionalLight(0x56c8e0, 0.22));
 
-  buildCampusDecor();
-
+  buildCampusDecor(scene);
   buildingGroup = new THREE.Group();
-  labelGroup = new THREE.Group();
-  scene.add(buildingGroup, labelGroup);
-  syncBuildings(park.units);
+  scene.add(buildingGroup);
+  rebuildAllUnits();
 
+  const onPointerDown = (ev: PointerEvent) => {
+    if (ev.button !== 0) return;
+    pointerDownX = ev.clientX;
+    pointerDownY = ev.clientY;
+    dragMoved = false;
+  };
   const onPointerMove = (ev: PointerEvent) => {
     const rect = renderer!.domElement.getBoundingClientRect();
     pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
     pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
     tooltip.value.x = ev.clientX - rect.left + 14;
     tooltip.value.y = ev.clientY - rect.top + 14;
+    if ((ev.buttons & 1) === 1) {
+      const dx = ev.clientX - pointerDownX;
+      const dy = ev.clientY - pointerDownY;
+      if (dx * dx + dy * dy > CLICK_DRAG_THRESHOLD_PX * CLICK_DRAG_THRESHOLD_PX) {
+        dragMoved = true;
+      }
+    }
   };
   const onPointerLeave = () => {
     pointer.set(-10, -10);
     tooltip.value.visible = false;
   };
   const onClick = () => {
-    const id = pickUnitId();
-    if (id) park.selectUnit(id, true);
+    if (dragMoved) return;
+    const hit = pickHit();
+    if (hit?.zoneId) park.selectZone(hit.zoneId, true);
+    else if (hit?.unitId) park.selectUnit(hit.unitId, true);
   };
 
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
   renderer.domElement.addEventListener('pointermove', onPointerMove);
   renderer.domElement.addEventListener('pointerleave', onPointerLeave);
   renderer.domElement.addEventListener('click', onClick);
-  (renderer.domElement as any)._parkHandlers = { onPointerMove, onPointerLeave, onClick };
+  (renderer.domElement as any)._parkHandlers = {
+    onPointerDown,
+    onPointerMove,
+    onPointerLeave,
+    onClick,
+  };
 
   resize();
   resizeObserver.value = new ResizeObserver(() => resize());
   resizeObserver.value.observe(host);
+  window.addEventListener('resize', resize);
   animate();
 }
 
-function pickUnitId(): string | null {
+function pickHit(): { unitId?: string; zoneId?: string } | null {
   if (!raycaster || !camera || !buildingGroup) return null;
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(buildingGroup.children, true);
   for (const hit of hits) {
     let obj: THREE.Object3D | null = hit.object;
+    let unitId: string | undefined;
+    let zoneId: string | undefined;
     while (obj) {
-      if (obj.userData.unitId) return String(obj.userData.unitId);
+      if (obj.userData.zoneId) zoneId = String(obj.userData.zoneId);
+      if (obj.userData.unitId) unitId = String(obj.userData.unitId);
       obj = obj.parent;
     }
+    if (unitId || zoneId) return { unitId, zoneId };
   }
   return null;
 }
@@ -429,74 +183,132 @@ function disposeObject(obj: THREE.Object3D): void {
     const mat = mesh.material as THREE.Material | THREE.Material[] | undefined;
     if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
     else mat?.dispose();
-    const sprite = child as THREE.Sprite;
-    if (sprite.material) {
-      const sm = sprite.material as THREE.SpriteMaterial;
-      sm.map?.dispose();
-      sm.dispose();
-    }
   });
 }
 
-function syncBuildings(units: RiskUnit[]): void {
-  if (!buildingGroup || !labelGroup) return;
-  const keep = new Set(units.map((u) => u.id));
-
-  for (const [id, group] of unitGroups) {
-    if (!keep.has(id)) {
-      buildingGroup.remove(group);
-      disposeObject(group);
-      unitGroups.delete(id);
-      riskMats.delete(id);
-      targetColors.delete(id);
-      const label = labelSprites.get(id);
-      if (label) {
-        labelGroup.remove(label);
-        disposeObject(label);
-        labelSprites.delete(id);
-      }
-    }
+function clearUnits(): void {
+  if (!buildingGroup) return;
+  for (const group of unitGroups.values()) {
+    buildingGroup.remove(group);
+    disposeObject(group);
   }
+  unitGroups.clear();
+  zoneMats.clear();
+  unitRings.clear();
+}
 
-  for (const unit of units) {
-    let group = unitGroups.get(unit.id);
-    if (!group) {
-      group = buildUnitModel(unit);
-      buildingGroup.add(group);
-      unitGroups.set(unit.id, group);
+function rebuildAllUnits(): void {
+  if (!buildingGroup) return;
+  clearUnits();
+  const alarmed = park.alarmedZoneIds;
+  for (const unit of park.units) {
+    const zones = park.zonesOfUnit(unit.id);
+    const { group, zoneMats: mats, ring } = buildUnitWithZones(
+      unit,
+      zones,
+      alarmed,
+      park.selectedZoneId,
+    );
+    group.position.set(unit.gridX, 0, unit.gridZ);
+    group.rotation.y = unit.yaw || 0;
+    buildingGroup.add(group);
+    unitGroups.set(unit.id, group);
+    unitRings.set(unit.id, ring);
+    for (const [zid, mat] of mats) zoneMats.set(zid, mat);
+  }
+  applyVisibilityFilter();
+  syncLabelModels();
+}
 
-      const label = makeLabelSprite(unit.name);
-      label.position.set(unit.gridX * 2.55, Math.max(unit.height, 2) + 1.1, unit.gridZ * 2.55);
-      labelGroup.add(label);
-      labelSprites.set(unit.id, label);
+function applyVisibilityFilter(): void {
+  for (const unit of park.units) {
+    const group = unitGroups.get(unit.id);
+    if (!group) continue;
+    const filteredOut = park.levelFilter !== null && unit.currentLevel !== park.levelFilter;
+    group.visible = !filteredOut;
+    const ring = unitRings.get(unit.id);
+    if (ring) {
+      (ring.material as THREE.MeshBasicMaterial).color.copy(colorFor(unit.currentLevel));
+      (ring.material as THREE.MeshBasicMaterial).opacity =
+        park.selectedUnitId === unit.id ? 0.55 : 0.32;
     }
-
-    group.position.set(unit.gridX * 2.55, 0, unit.gridZ * 2.55);
-    targetColors.set(unit.id, colorFor(unit.currentLevel));
-    applySelectionStyle(unit);
   }
 }
 
-function applySelectionStyle(unit: RiskUnit): void {
-  const group = unitGroups.get(unit.id);
-  if (!group) return;
-  const selected = park.selectedUnitId === unit.id;
-  const filteredOut = park.levelFilter !== null && unit.currentLevel !== park.levelFilter;
-  const mats = riskMats.get(unit.id) || [];
-  for (const mat of mats) {
-    mat.opacity = filteredOut ? 0.16 : selected ? 1 : 0.96;
-    mat.emissiveIntensity = selected ? 0.48 : filteredOut ? 0.05 : 0.22;
+function refreshZoneStyles(): void {
+  // 区域等级/告警变化时重建，保证告警柱与分区体块同步
+  rebuildAllUnits();
+}
+
+function refreshLabelEls(): void {
+  labelEls.clear();
+  labelsHost.value?.querySelectorAll<HTMLElement>('[data-unit-id]').forEach((el) => {
+    const id = el.dataset.unitId;
+    if (id) labelEls.set(id, el);
+  });
+}
+
+function syncLabelModels(): void {
+  const labels = park.visibleUnits
+    .map((unit) => ({
+      id: unit.id,
+      name: unit.name,
+      level: unit.currentLevel,
+      width: LABEL_WIDTH,
+      selected: unit.id === park.selectedUnitId,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const key = labels.map((l) => `${l.id}:${l.name}:${l.level}:${l.selected}`).join('|');
+  if (key !== labelModelKey) {
+    labelModelKey = key;
+    mapLabels.value = labels;
+    void nextTick(() => {
+      refreshLabelEls();
+      updateLabelPositions();
+    });
+    return;
   }
-  const ring = group.userData.ring as THREE.Mesh | undefined;
-  if (ring) {
-    const rm = ring.material as THREE.MeshBasicMaterial;
-    rm.opacity = filteredOut ? 0.05 : selected ? 0.65 : 0.35;
+  if (labelEls.size !== labels.length) {
+    void nextTick(() => {
+      refreshLabelEls();
+      updateLabelPositions();
+    });
   }
-  group.scale.setScalar(selected ? 1.06 : 1);
-  const label = labelSprites.get(unit.id);
-  if (label) {
-    label.visible = !filteredOut;
-    (label.material as THREE.SpriteMaterial).opacity = selected ? 1 : 0.85;
+}
+
+function updateLabelPositions(): void {
+  const host = canvasHost.value;
+  if (!host || !camera) return;
+  const width = host.clientWidth;
+  const height = host.clientHeight;
+
+  for (const unit of park.units) {
+    const el = labelEls.get(unit.id);
+    if (!el) continue;
+    const visible = park.levelFilter === null || unit.currentLevel === park.levelFilter;
+    if (!visible) {
+      el.style.visibility = 'hidden';
+      continue;
+    }
+    labelWorld
+      .set(unit.gridX, Math.max(unit.height, 2) + 1.35, unit.gridZ)
+      .project(camera);
+    const inView =
+      labelWorld.z >= -1 &&
+      labelWorld.z <= 1 &&
+      Math.abs(labelWorld.x) <= 1.15 &&
+      Math.abs(labelWorld.y) <= 1.15;
+    if (!inView) {
+      el.style.visibility = 'hidden';
+      continue;
+    }
+    const x = Math.max(8, Math.min(width - LABEL_WIDTH - 8, ((labelWorld.x + 1) * width) / 2 - LABEL_WIDTH / 2));
+    const y = Math.max(
+      40,
+      Math.min(height - LABEL_HEIGHT - 8, ((1 - labelWorld.y) * height) / 2 - LABEL_HEIGHT - LABEL_SCREEN_Y_OFFSET),
+    );
+    el.style.visibility = 'visible';
+    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 }
 
@@ -505,52 +317,52 @@ function resize(): void {
   if (!host || !renderer || !camera) return;
   const w = host.clientWidth || 1;
   const h = host.clientHeight || 1;
+  renderer.setPixelRatio(Math.min(Math.max(window.devicePixelRatio || 1, 1.5), 2));
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  updateLabelPositions();
+}
+
+function updateHoverTooltip(): void {
+  const hit = pickHit();
+  if (!hit?.unitId || !filteredIds.value.has(hit.unitId)) {
+    tooltip.value.visible = false;
+    return;
+  }
+  const unit = park.units.find((u) => u.id === hit.unitId);
+  if (!unit) {
+    tooltip.value.visible = false;
+    return;
+  }
+  const zone = hit.zoneId ? park.zones.find((z) => z.id === hit.zoneId) : null;
+  const alarm = hit.zoneId
+    ? park.pendingAlarms.find((a) => a.zoneId === hit.zoneId)
+    : park.pendingAlarms.find((a) => a.unitId === unit.id);
+  tooltip.value.visible = true;
+  tooltip.value.unitName = unit.name;
+  tooltip.value.zoneName = zone?.name || '建筑公共区';
+  tooltip.value.level = RISK_LEVEL_LABEL[zone?.currentLevel || unit.currentLevel];
+  tooltip.value.alarm = alarm ? `${alarm.type} · ${alarm.summary}` : '当前区域无未关闭告警';
 }
 
 function animate(): void {
   animId = requestAnimationFrame(animate);
   if (!renderer || !scene || !camera) return;
   controls?.update();
-
-  for (const [id, mats] of riskMats) {
-    const target = targetColors.get(id);
-    if (!target) continue;
-    for (const mat of mats) {
-      mat.color.lerp(target, 0.18);
-      mat.emissive.lerp(target, 0.18);
-    }
-    const group = unitGroups.get(id);
-    const ring = group?.userData.ring as THREE.Mesh | undefined;
-    if (ring) (ring.material as THREE.MeshBasicMaterial).color.lerp(target, 0.18);
-  }
-
-  if (raycaster && buildingGroup) {
-    const id = pickUnitId();
-    if (id && filteredIds.value.has(id)) {
-      const unit = park.units.find((u) => u.id === id);
-      if (unit) {
-        tooltip.value.visible = true;
-        tooltip.value.name = unit.name;
-        tooltip.value.level = RISK_LEVEL_LABEL[unit.currentLevel];
-        tooltip.value.triggers = unit.triggers.length;
-      }
-    } else {
-      tooltip.value.visible = false;
-    }
-  }
-
+  updateHoverTooltip();
   renderer.render(scene, camera);
+  updateLabelPositions();
 }
 
 function dispose(): void {
   cancelAnimationFrame(animId);
   resizeObserver.value?.disconnect();
+  window.removeEventListener('resize', resize);
   if (renderer) {
     const handlers = (renderer.domElement as any)._parkHandlers;
     if (handlers) {
+      renderer.domElement.removeEventListener('pointerdown', handlers.onPointerDown);
       renderer.domElement.removeEventListener('pointermove', handlers.onPointerMove);
       renderer.domElement.removeEventListener('pointerleave', handlers.onPointerLeave);
       renderer.domElement.removeEventListener('click', handlers.onClick);
@@ -558,30 +370,35 @@ function dispose(): void {
     renderer.dispose();
     renderer.domElement.remove();
   }
-  for (const group of unitGroups.values()) disposeObject(group);
-  for (const label of labelSprites.values()) disposeObject(label);
-  unitGroups.clear();
-  labelSprites.clear();
-  riskMats.clear();
-  targetColors.clear();
+  clearUnits();
+  mapLabels.value = [];
+  labelEls.clear();
+  labelModelKey = '';
   controls?.dispose();
   renderer = null;
   scene = null;
   camera = null;
   controls = null;
   buildingGroup = null;
-  labelGroup = null;
 }
 
 watch(
-  () => park.units.map((u) => `${u.id}:${u.currentLevel}:${u.height}`).join('|'),
-  () => syncBuildings(park.units),
+  () =>
+    [
+      park.units.map((u) => `${u.id}:${u.currentLevel}`).join('|'),
+      park.zones.map((z) => `${z.id}:${z.currentLevel}`).join('|'),
+      [...park.alarmedZoneIds].sort().join('|'),
+      park.selectedZoneId,
+      park.selectedUnitId,
+    ].join('#'),
+  () => refreshZoneStyles(),
 );
 
 watch(
-  () => [park.selectedUnitId, park.levelFilter] as const,
+  () => park.levelFilter,
   () => {
-    for (const unit of park.units) applySelectionStyle(unit);
+    applyVisibilityFilter();
+    syncLabelModels();
   },
 );
 
@@ -592,7 +409,20 @@ onBeforeUnmount(() => dispose());
 <template>
   <div class="park-map3d">
     <div ref="canvasHost" class="park-map3d__canvas" />
-    <div class="park-map3d__badge">示意布局 · 演示数据</div>
+    <div ref="labelsHost" class="park-map3d__labels" aria-hidden="true">
+      <div
+        v-for="label in mapLabels"
+        :key="label.id"
+        class="park-map3d__label"
+        :class="{ 'is-selected': label.selected }"
+        :data-unit-id="label.id"
+        :style="{ width: `${label.width}px`, '--risk-color': RISK_LEVEL_COLOR[label.level] }"
+      >
+        <i />
+        <span>{{ label.name }}</span>
+      </div>
+    </div>
+    <div class="park-map3d__badge">示意布局 · 园区分区 · 演示数据</div>
 
     <div class="park-map3d__legend">
       <button
@@ -615,9 +445,9 @@ onBeforeUnmount(() => dispose());
       class="park-map3d__tooltip"
       :style="{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }"
     >
-      <strong>{{ tooltip.name }}</strong>
-      <span>{{ tooltip.level }}</span>
-      <small>触发因素 {{ tooltip.triggers }}</small>
+      <strong>{{ tooltip.unitName }}</strong>
+      <span>{{ tooltip.zoneName }} · {{ tooltip.level }}</span>
+      <small>{{ tooltip.alarm }}</small>
     </div>
   </div>
 </template>
@@ -651,12 +481,58 @@ onBeforeUnmount(() => dispose());
   cursor: grabbing;
 }
 
+.park-map3d__labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.park-map3d__label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid #426479;
+  border-radius: 4px;
+  background: #0b1e2fee;
+  color: #edf5fc;
+  font: 500 13px/1 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+  box-shadow: 0 2px 5px #020b1466;
+  transform: translate3d(-9999px, -9999px, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.park-map3d__label.is-selected {
+  border-color: var(--risk-color);
+  background: #132e43;
+}
+
+.park-map3d__label i {
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  flex-shrink: 0;
+  background: var(--risk-color);
+}
+
+.park-map3d__label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .park-map3d__badge {
   position: absolute;
   left: 14px;
   top: 12px;
   z-index: 2;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1px;
   color: #7ea3b8;
   border: 1px solid #2a4d63;
@@ -696,7 +572,6 @@ onBeforeUnmount(() => dispose());
 
 .park-map3d__legend-item.active {
   border-color: var(--lv);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lv) 45%, transparent);
 }
 
 .park-map3d__legend-item i {
@@ -718,7 +593,8 @@ onBeforeUnmount(() => dispose());
   position: absolute;
   z-index: 3;
   pointer-events: none;
-  min-width: 140px;
+  min-width: 168px;
+  max-width: 240px;
   padding: 8px 10px;
   border-radius: 4px;
   background: #102d41ee;
@@ -743,5 +619,6 @@ onBeforeUnmount(() => dispose());
 .park-map3d__tooltip small {
   font-size: 10px;
   color: #7a99ad;
+  line-height: 1.4;
 }
 </style>

@@ -117,12 +117,18 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="ps-app">
+  <div class="ps-app" :class="{ 'ps-homepage': page.owned }">
     <header class="ps-topbar">
       <div class="ps-brand">
         <div class="ps-brand-emblem"><PsIcon name="ShieldCheck" :size="25" /></div>
-        <div>
-          <b>生产安全感知平台</b>
+        <div class="ps-brand-text">
+          <div class="ps-brand-title-row">
+            <b>生产安全感知平台</b>
+            <span class="ps-operating-status" :data-alert="park.pendingAlarms.length ? '1' : '0'">
+              <i />
+              {{ park.pendingAlarms.length ? '预警跟踪中' : '全域运行平稳' }}
+            </span>
+          </div>
           <span>SAFETY OPERATIONS CENTER</span>
         </div>
       </div>
@@ -150,48 +156,18 @@ onBeforeUnmount(() => {
           {{ formatClock(park.demoTime) }}
           <small>{{ formatDate(park.demoTime) }}</small>
         </span>
+        <button
+          class="ps-icon-button ps-fullscreen-button"
+          type="button"
+          :aria-label="fullscreen ? '退出全屏' : '进入全屏'"
+          @click="toggleFullscreen"
+        >
+          <PsIcon :name="fullscreen ? 'Minimize2' : 'Maximize2'" :size="19" />
+        </button>
       </div>
     </header>
 
     <main class="ps-main">
-      <div class="ps-page-header">
-        <div>
-          <div class="ps-eyebrow">
-            <span />
-            M5 香料工程中心 <i>/</i> {{ page.titleEn }}
-          </div>
-          <h1>
-            {{ page.title }}
-            <span class="ps-operating-status">
-              <i />
-              {{ park.pendingAlarms.length ? '预警跟踪中' : '全域运行平稳' }}
-            </span>
-          </h1>
-        </div>
-        <div v-if="page.owned" class="ps-page-actions">
-          <span class="park-scenario-inline" :title="park.scenarioLabel">
-            <em>场景</em>
-            {{ park.scenarioLabel }}
-          </span>
-          <button class="ps-button ps-button-small" type="button" @click="park.scenarioPrev()">上一步</button>
-          <button class="ps-button ps-button-primary ps-button-small" type="button" @click="park.scenarioNext()">
-            下一步
-          </button>
-          <button class="ps-button ps-button-small" type="button" @click="park.scenarioReset()">
-            <PsIcon name="RefreshCw" :size="15" />
-            重置
-          </button>
-          <button
-            class="ps-icon-button ps-fullscreen-button"
-            type="button"
-            :aria-label="fullscreen ? '退出全屏' : '进入全屏'"
-            @click="toggleFullscreen"
-          >
-            <PsIcon :name="fullscreen ? 'Minimize2' : 'Maximize2'" :size="19" />
-          </button>
-        </div>
-      </div>
-
       <div class="ps-main-body">
         <OverviewView v-if="page.owned" @navigate="go" />
         <section v-else class="ps-panel ps-placeholder" aria-hidden="true" />
@@ -242,14 +218,29 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
-.ps-page-header {
-  flex-shrink: 0;
-  min-height: 0;
-  padding: 8px 0 6px;
+.ps-brand {
+  min-width: 320px;
 }
 
-.ps-page-header h1 {
-  font-size: 20px;
+.ps-brand-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ps-brand-title-row .ps-operating-status {
+  flex-shrink: 0;
+  transform: translateY(1px);
+}
+
+.ps-brand-title-row .ps-operating-status[data-alert='1'] {
+  color: #f59a38;
+  border-color: #9372415c;
+  background: #75552713;
+}
+
+.ps-brand-title-row .ps-operating-status[data-alert='1'] i {
+  background: #f59a38;
 }
 
 .ps-main-body {
@@ -258,6 +249,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding-top: 8px;
 }
 
 .ps-footer {
@@ -271,21 +263,7 @@ onBeforeUnmount(() => {
   margin-top: 0;
 }
 
-.park-scenario-inline {
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  color: #8fb0c3;
-  margin-right: 4px;
-}
-
-.park-scenario-inline em {
-  font-style: normal;
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: #6f92a7;
-  margin-right: 6px;
+.ps-fullscreen-button {
+  margin-left: 2px;
 }
 </style>
