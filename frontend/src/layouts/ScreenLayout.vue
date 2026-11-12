@@ -88,13 +88,24 @@ function formatDate(ts: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function go(target: string): void {
+function go(target: string, extra: Record<string, string> = {}): void {
   if (target === 'overview') {
     void router.push({ path: '/dashboard' });
     return;
   }
-  void router.push({ path: '/dashboard', query: { view: target } });
+  void router.push({ path: '/dashboard', query: { view: target, ...extra } });
 }
+
+const placeholderFilters = computed(() => {
+  const q = route.query;
+  const rows: Array<{ k: string; v: string }> = [];
+  if (q.level) rows.push({ k: '风险等级筛选', v: String(q.level) });
+  if (q.state) rows.push({ k: '作业状态筛选', v: String(q.state) });
+  if (q.topic) rows.push({ k: '生产安全专题', v: String(q.topic) });
+  if (q.unitId) rows.push({ k: '关联风险单元', v: String(q.unitId) });
+  if (q.focus) rows.push({ k: '焦点', v: String(q.focus) });
+  return rows;
+});
 
 async function toggleFullscreen(): Promise<void> {
   try {
@@ -177,7 +188,20 @@ onBeforeUnmount(() => {
         <OverviewView v-if="view === 'overview'" @navigate="go" />
         <OperationsView v-else-if="view === 'operations'" @navigate="go" />
         <SafetyPanel v-else-if="view === 'production'" :store="safety" />
-        <section v-else class="ps-panel ps-placeholder" aria-hidden="true" />
+        <section v-else class="ps-panel park-placeholder" :aria-label="page.title">
+          <div class="park-placeholder__body">
+            <h2>{{ page.title }}</h2>
+            <p>总览、危险作业、生产安全预警已接入。其余子页尚未展开，以下为总览带入的筛选 / 上下文占位。</p>
+            <ul v-if="placeholderFilters.length">
+              <li v-for="row in placeholderFilters" :key="row.k">
+                <em>{{ row.k }}</em>
+                <b>{{ row.v }}</b>
+              </li>
+            </ul>
+            <p v-else class="park-placeholder__empty">未带筛选条件，可从总览指标 / 列表点击进入以验证跳转。</p>
+            <button class="ps-button ps-button-primary" type="button" @click="go('overview')">返回总览</button>
+          </div>
+        </section>
       </div>
 
       <footer class="ps-footer">
@@ -264,13 +288,68 @@ onBeforeUnmount(() => {
   min-height: 28px;
 }
 
-.ps-placeholder {
+.ps-fullscreen-button {
+  margin-left: 2px;
+}
+
+.park-placeholder {
   flex: 1;
   min-height: 0;
   margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.ps-fullscreen-button {
-  margin-left: 2px;
+.park-placeholder__body {
+  max-width: 560px;
+  padding: 28px 32px;
+  text-align: left;
+}
+
+.park-placeholder__body h2 {
+  font-size: 22px;
+  color: #eaf3fa;
+  margin-bottom: 10px;
+}
+
+.park-placeholder__body > p {
+  font-size: 13px;
+  color: #9bb6cb;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.park-placeholder__body ul {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.park-placeholder__body li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #2a4358;
+  border-radius: 4px;
+  background: #0d2436;
+}
+
+.park-placeholder__body em {
+  font-style: normal;
+  color: #7f9eb1;
+  font-size: 12px;
+}
+
+.park-placeholder__body b {
+  color: #d7ebf6;
+  font-size: 13px;
+}
+
+.park-placeholder__empty {
+  margin-bottom: 18px !important;
 }
 </style>

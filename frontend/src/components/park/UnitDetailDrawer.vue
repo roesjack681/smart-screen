@@ -8,6 +8,11 @@ import {
   RISK_LEVEL_LABEL,
 } from '@/types/park';
 
+const emit = defineEmits<{
+  'goto-risk': [query?: Record<string, string>];
+  'goto-ops': [query?: Record<string, string>];
+}>();
+
 const park = useParkStore();
 
 const unit = computed(() => park.selectedUnit);
@@ -17,8 +22,29 @@ const timeline = computed(() => (unit.value ? park.unitTimeline(unit.value.id) :
 const ops = computed(() => (unit.value ? park.relatedOperations(unit.value.id) : []));
 const alarms = computed(() => (unit.value ? park.relatedAlarms(unit.value.id) : []));
 
+const reviewHint = computed(() => {
+  if (!unit.value) return '';
+  if (unit.value.reviewStatus === 'pending') {
+    return '涉及红区或重大升级事件：报警解除不自动恢复基础等级，须人工复核后恢复。';
+  }
+  if (unit.value.currentLevel !== unit.value.baseLevel) {
+    return '当前动态等级高于固有等级；触发因素消除并确认后，可按规则恢复（演示）。';
+  }
+  return '当前无待复核事项；动态等级与固有等级一致或按已确认状态展示。';
+});
+
 function close(): void {
   park.selectUnit(null);
+}
+
+function openRules(): void {
+  if (!unit.value) return;
+  emit('goto-risk', { unitId: unit.value.id, focus: 'rules' });
+}
+
+function openOps(): void {
+  if (!unit.value) return;
+  emit('goto-ops', { unitId: unit.value.id });
 }
 </script>
 
@@ -93,6 +119,17 @@ function close(): void {
               <li v-for="(t, i) in unit.triggers" :key="i">{{ t }}</li>
             </ul>
             <p v-else class="park-unit-drawer__empty">当前无激活触发因素</p>
+            <p class="park-unit-drawer__hint">
+              触发因素数量 {{ unit.triggers.length }} · 多因素取最高幅度，封顶红区（M5 口径演示）
+            </p>
+            <button class="ps-link-button park-unit-drawer__link" type="button" @click="openRules">
+              查看规则口径（动态风险占位）
+            </button>
+          </section>
+
+          <section>
+            <h3>复核与恢复</h3>
+            <p class="park-unit-drawer__hint">{{ reviewHint }}</p>
           </section>
 
           <section>
@@ -104,6 +141,9 @@ function close(): void {
               </li>
             </ul>
             <p v-else class="park-unit-drawer__empty">暂无关联作业</p>
+            <button class="ps-link-button park-unit-drawer__link" type="button" @click="openOps">
+              在危险作业页查看（占位承接）
+            </button>
           </section>
 
           <section>
@@ -151,6 +191,14 @@ function close(): void {
   background: linear-gradient(160deg, #102b41, #0a1c2c);
   box-shadow: -20px 0 100px #02091077;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.park-unit-drawer::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .park-unit-drawer__head {
@@ -166,6 +214,18 @@ function close(): void {
   color: #6f92a7;
   letter-spacing: 1px;
   margin-bottom: 6px !important;
+}
+
+.park-unit-drawer__hint {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #8fafc2;
+}
+
+.park-unit-drawer__link {
+  margin-top: 8px;
+  font-size: 12px;
 }
 
 .park-unit-drawer__head h2 {

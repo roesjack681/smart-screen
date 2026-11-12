@@ -1,7 +1,7 @@
 import type { ParkOperation } from '@/types/park';
 import { parkDemoDateTime } from '@/utils/park-demo-time';
 
-/** 8项：进行中3、待开工2、暂停1、已完成2 */
+/** 演示作业列表：足够条目供侧栏与底部滚动 */
 export function createBaseOperations(): ParkOperation[] {
   return [
     {
@@ -17,7 +17,7 @@ export function createBaseOperations(): ParkOperation[] {
     {
       id: 'OP002',
       unitId: 'U07',
-      name: '萃取釜内清理',
+      name: '反应釜内清理',
       type: '有限空间',
       plannedStart: parkDemoDateTime('09:00'),
       plannedEnd: parkDemoDateTime('12:00'),
@@ -83,6 +83,86 @@ export function createBaseOperations(): ParkOperation[] {
       plannedEnd: parkDemoDateTime('14:00'),
       actualState: 'ongoing',
       summary: '过程监护中',
+    },
+    {
+      id: 'OP009',
+      unitId: 'U11',
+      name: '变配电室电缆更换',
+      type: '临时用电',
+      plannedStart: '2026-11-11 07:40',
+      plannedEnd: '2026-11-11 11:00',
+      actualState: 'ongoing',
+      summary: '停电窗口作业中',
+    },
+    {
+      id: 'OP010',
+      unitId: 'U10',
+      name: '消防泵房管路防腐',
+      type: '高处',
+      plannedStart: '2026-11-11 14:00',
+      plannedEnd: '2026-11-11 18:00',
+      actualState: 'pending',
+      summary: '待安全交底',
+    },
+    {
+      id: 'OP011',
+      unitId: 'U02',
+      name: '罐区盲板抽堵',
+      type: '盲板抽堵',
+      plannedStart: '2026-11-11 11:00',
+      plannedEnd: '2026-11-11 13:30',
+      actualState: 'pending',
+      summary: '方案已审核',
+    },
+    {
+      id: 'OP012',
+      unitId: 'U09',
+      name: '办公区雨棚吊装',
+      type: '吊装',
+      plannedStart: '2026-11-11 15:00',
+      plannedEnd: '2026-11-11 17:30',
+      actualState: 'pending',
+      summary: '等待起重设备进场',
+    },
+    {
+      id: 'OP013',
+      unitId: 'U06',
+      name: '原料库货架加固',
+      type: '高处',
+      plannedStart: '2026-11-11 09:20',
+      plannedEnd: '2026-11-11 12:20',
+      actualState: 'paused',
+      summary: '发现隐患暂停整改',
+    },
+    {
+      id: 'OP014',
+      unitId: 'U03',
+      name: 'A2工段管道焊接',
+      type: '动火',
+      plannedStart: '2026-11-10 13:00',
+      plannedEnd: '2026-11-10 17:00',
+      actualState: 'completed',
+      summary: '已销案复核',
+    },
+    {
+      id: 'OP015',
+      unitId: 'U12',
+      name: '门禁通道断路施工',
+      type: '断路',
+      plannedStart: '2026-11-11 06:30',
+      plannedEnd: '2026-11-11 09:00',
+      actualState: 'completed',
+      summary: '早班窗口已完成',
+    },
+    {
+      id: 'OP016',
+      unitId: 'U05',
+      name: '循环泵房受限空间巡检',
+      type: '有限空间',
+      plannedStart: '2026-11-11 16:00',
+      plannedEnd: '2026-11-11 18:00',
+      actualState: 'pending',
+      summary: '气体检测待复测',
     },
   ];
 }

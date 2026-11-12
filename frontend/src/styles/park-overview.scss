@@ -7,6 +7,30 @@
   font-family: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
 }
 
+/* 总览侧栏/列表：可滚动但不显示滚动条 */
+@mixin park-hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
+.ps-homepage,
+.ps-homepage * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ps-homepage *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 .ps-homepage .ps-topbar {
   height: 72px;
 }
@@ -39,21 +63,23 @@
   min-height: 0;
   height: 100%;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 8px;
   overflow: hidden;
+  position: relative;
 }
 
 .park-overview__metrics {
   margin-bottom: 0;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
 }
 
 .park-overview__metrics.ps-metrics > article {
-  min-height: 96px;
-  padding: 12px 16px;
-  gap: 14px;
+  min-height: 102px;
+  padding: 10px 12px;
+  gap: 10px;
   background: #10283b;
   border-color: #2b485e;
 }
@@ -64,10 +90,10 @@
 }
 
 .park-overview__metrics.ps-metrics strong {
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  margin: 4px 0;
+  margin: 2px 0;
 }
 
 .park-overview__metrics.ps-metrics strong small {
@@ -85,12 +111,42 @@
   display: none;
 }
 
-.park-metric-clickable {
+.park-metric-clickable,
+.park-metric-vehicle {
   cursor: pointer;
 }
 
-.park-metric-clickable:hover {
+.park-metric-clickable:hover,
+.park-metric-vehicle:hover {
   border-color: #2f6d86;
+}
+
+.park-metric-cap {
+  margin: 2px 0 0 !important;
+  font-size: 10px !important;
+  color: #7f9eb1 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3 !important;
+}
+
+.park-index-pending {
+  font-style: normal;
+  color: #f0c36a;
+}
+
+.park-level-chip {
+  cursor: pointer;
+  appearance: none;
+}
+
+.park-state-pill {
+  cursor: pointer;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
 }
 
 .park-metric-levels {
@@ -305,8 +361,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #36576e transparent;
+  @include park-hide-scrollbar;
 }
 
 .park-feed > li {
@@ -387,6 +442,156 @@
   border: 0 !important;
 }
 
+.park-overview__toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+}
+
+.park-scenario-bar,
+.park-agent-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid #2a4358;
+  border-radius: 4px;
+  background: #0d2436;
+}
+
+.park-scenario-bar {
+  flex: 1;
+}
+
+.park-scenario-bar em,
+.park-agent-entry em {
+  flex-shrink: 0;
+  font-style: normal;
+  font-size: 11px;
+  color: #6f92a7;
+  letter-spacing: 1px;
+}
+
+.park-scenario-bar > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #b7ccda;
+}
+
+.park-scenario-bar .ps-button-small {
+  min-height: 26px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.park-agent-entry button {
+  border: 1px solid #2f5268;
+  background: #102a3e;
+  color: #a9c4d5;
+  border-radius: 3px;
+  font-size: 11px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.park-agent-entry button.active,
+.park-agent-entry button:hover {
+  border-color: #3a8aa8;
+  color: #7fe0ef;
+  background: #14384d;
+}
+
+.park-agent-panel {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 20;
+  width: min(380px, calc(100% - 24px));
+  border: 1px solid #315d75;
+  border-radius: 6px;
+  background: linear-gradient(160deg, #102b41, #0a1c2c);
+  box-shadow: 0 12px 40px #020b1470;
+  padding: 12px 14px 14px;
+}
+
+.park-agent-panel > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.park-agent-panel h3 {
+  font-size: 14px;
+  color: #e8f4fb;
+}
+
+.park-agent-panel header p {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #87a7bb;
+}
+
+.park-agent-panel__tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.park-agent-panel__tabs button {
+  flex: 1;
+  border: 1px solid #2f5268;
+  background: #0f2738;
+  color: #9bb6c8;
+  border-radius: 3px;
+  font-size: 11px;
+  padding: 5px 4px;
+}
+
+.park-agent-panel__tabs button.active {
+  border-color: #3a8aa8;
+  color: #7fe0ef;
+}
+
+.park-agent-panel__qs {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.park-agent-panel__qs button {
+  text-align: left;
+  border: 1px solid #294859;
+  background: #0c2233;
+  color: #c5dceb;
+  border-radius: 3px;
+  font-size: 12px;
+  padding: 7px 9px;
+}
+
+.park-agent-panel__qs button:hover {
+  border-color: #3a8aa8;
+}
+
+.park-agent-panel__answer {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #b7cfe0;
+  padding: 9px 10px;
+  border-radius: 4px;
+  background: #0a1d2d;
+  border: 1px solid #243f52;
+  min-height: 64px;
+}
+
 .park-alcohol {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -395,11 +600,18 @@
   flex-shrink: 0;
 }
 
-.park-alcohol > div {
+.park-alcohol > button {
+  text-align: left;
   background: #0c2233;
   border: 1px solid #243f52;
   border-radius: 4px;
   padding: 10px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.park-alcohol > button:hover {
+  border-color: #3a8aa8;
 }
 
 .park-alcohol__wide {
@@ -465,6 +677,32 @@
   flex-shrink: 0;
 }
 
+.park-marquee {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
+}
+
+.park-marquee__track {
+  flex: none;
+  overflow: visible;
+  animation: park-marquee-up var(--park-marquee-duration, 28s) linear infinite;
+}
+
+.park-marquee:hover .park-marquee__track {
+  animation-play-state: paused;
+}
+
+@keyframes park-marquee-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
 .park-bottom-list {
   list-style: none;
   margin: 0;
@@ -474,8 +712,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #36576e transparent;
+  @include park-hide-scrollbar;
 }
 
 .park-bottom-list > li {
@@ -485,6 +722,16 @@
   padding: 6px 0;
   flex-shrink: 0;
   border-bottom: 1px solid #1c3445;
+}
+
+.park-bottom-list__click,
+.park-marquee__track > li {
+  cursor: pointer;
+}
+
+.park-bottom-list__click:hover strong,
+.park-marquee__track > li:hover strong {
+  color: #72deeb;
 }
 
 .park-bottom-list > li:last-child {

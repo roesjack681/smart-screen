@@ -35,8 +35,8 @@ const segments: Array<{ key: OperationState; color: string }> = [
   { key: 'completed', color: '#4ED9B3' },
 ];
 
-/** 半径：议会点阵与饼图共用，保证过渡对齐 */
-const radius = ['28%', '78%'] as const;
+/** 半径：议会点阵与饼图共用；内径加大，避免中心数字贴环 */
+const radius = ['44%', '78%'] as const;
 const SERIES_KEY = 'op-state';
 
 const chartData = computed(() =>
